@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenVerifyView,
 )
+from .serializers import EmailOrUsernameTokenSerializer
 
 from .api_views import (
     # Auth
@@ -34,8 +35,8 @@ urlpatterns = [
     # ==========================================================================
     # Authentication (JWT)
     # ==========================================================================
-    # POST /api/auth/login/ - Get access & refresh tokens
-    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # POST /api/auth/login/ - Get access & refresh tokens (supports username OR email)
+    path('auth/login/', TokenObtainPairView.as_view(serializer_class=EmailOrUsernameTokenSerializer), name='token_obtain_pair'),
     
     # POST /api/auth/refresh/ - Refresh access token
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

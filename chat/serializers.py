@@ -1,6 +1,52 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Conversation, ChatMessage, Document, DocumentChunk, ChatAttachment
+
+
+class EmailOrUsernameTokenSerializer(TokenObtainPairSerializer):
+    """
+    Custom token serializer that allows login with either username or email.
+    The 'username' field can contain either the username or email address.
+    """
+    def validate(self, attrs):
+        username_or_email = attrs.get('username', '')
+        password = attrs.get('password', '')
+
+        # Check if input is an email
+        if '@' in username_or_email:
+            try:
+                user = User.objects.get(email__iexact=username_or_email)
+                username = user.username
+            except User.DoesNotExist:
+                raise serializers.ValidationError({
+                    'detail': 'No account found with this email address.'
+                })
+        else:
+            username = username_or_email
+
+        # Authenticate user
+        user = authenticate(username=username, password=password)
+        
+        if user is None:
+            raise serializers.ValidationError({
+                'detail': 'Invalid credentials. Please check your username/email and password.'
+            })
+        
+        if not user.is_active:
+            raise serializers.ValidationError({
+                'detail': 'This account has been disabled.'
+            })
+
+        # Generate tokens
+        refresh = RefreshToken.for_user(user)
+        
+        return {
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+        }
 
 
 class UserSerializer(serializers.ModelSerializer):
