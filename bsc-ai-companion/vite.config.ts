@@ -13,12 +13,12 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       '/api': {
-        target: 'http://backend:8000',
+        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },
       '/media': {
-        target: 'http://backend:8000',
+        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },
