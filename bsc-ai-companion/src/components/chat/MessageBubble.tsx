@@ -33,12 +33,20 @@ const AttachmentCard = ({ attachment, onPreview }: { attachment: MessageAttachme
   };
 
   const handlePreview = (e: React.MouseEvent) => {
+    console.log('[DEBUG] Preview clicked for:', attachment);
     if ((attachment.type === 'image' || attachment.type === 'pdf') && attachment.url && onPreview) {
       e.preventDefault();
+      console.log('[DEBUG] Opening preview for:', attachment.url);
       onPreview({
         url: attachment.url,
         type: attachment.type,
         name: attachment.name
+      });
+    } else {
+      console.log('[DEBUG] Preview conditions met:', {
+        isTypeValid: attachment.type === 'image' || attachment.type === 'pdf',
+        hasUrl: !!attachment.url,
+        hasHandler: !!onPreview
       });
     }
     // URLs and other types follow default link behavior
