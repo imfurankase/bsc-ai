@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /app/venv
+      - /app/__pycache__
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=*
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      # Add other environment variables as needed
+
+  frontend:
+    build:
+      context: ./bsc-ai-companion
+      dockerfile: Dockerfile
+    volumes:
+      - ./bsc-ai-companion:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend

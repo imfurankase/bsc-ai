@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -58,8 +59,10 @@ def get_phi3_response_stream(messages, context=None):
         print(f"[DEBUG] Context preview: {context[:300]}...")
     
     try:
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        print(f"[DEBUG] Ollama Base URL: {base_url}")
         response = requests.post(
-            "http://localhost:11434/api/chat",
+            f"{base_url}/api/chat",
             json={
                 "model": "phi3:mini",
                 "messages": chat_messages,
@@ -84,4 +87,5 @@ def get_phi3_response_stream(messages, context=None):
                 except:
                     continue
     except Exception as e:
+        print(f"[ERROR] Ollama Request Failed: {str(e)}")
         yield f"⚠️ Error: {str(e)}"
