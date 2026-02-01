@@ -15,30 +15,53 @@ def get_phi3_response_stream(messages, context=None):
         "Always refer to yourself as 'BSC AI' or 'I, BSC AI'. "
         "Keep responses professional, helpful, and grounded in facts. "
         "If asked about your origin, say: 'I was developed by BSC in Rwanda to advance local AI capabilities.' "
-        "If real-time data is provided (weather, stock prices), use it to answer accurately. "
-        "If no real-time data is given, do not invent numbers. Say 'I don't have live data for that.' "
     )
 
     if context:
-        # Append document context to system message
-        system_message += (
-            "\n\nUse the following DOCUMENT EXCERPTS to answer questions when relevant. "
-            "If the user refers to prior conversation (e.g., 'the 2nd idea'), recall it from chat history. "
-            "If the answer isn't in the documents, rely on the conversation history or say you don't know.\n\n"
-            "=== DOCUMENT EXCERPTS ===\n"
-            f"{context[:6000]}\n"
-            "=== END DOCUMENT ==="
-        )
+        # Check if it's web search results or document context
+        # The context comes wrapped with [Real-time Data]: prefix from _combine_contexts
+        is_realtime = "[Real-time Data]" in context or "[Web Search Results" in context
+        print(f"[DEBUG] Context type detection - is_realtime: {is_realtime}")
+        
+        if is_realtime:
+            system_message += (
+                "\n\n**CRITICAL INSTRUCTION**: I am providing you with REAL-TIME DATA from a web search. "
+                "You MUST use this information to answer the user's question accurately. "
+                "Do NOT say you don't have real-time data - USE THE DATA PROVIDED BELOW. "
+                "Always cite the source when answering.\n\n"
+                "=== REAL-TIME SEARCH RESULTS ===\n"
+                f"{context}\n"
+                "=== END SEARCH RESULTS ===\n\n"
+                "Based on the search results above, answer the user's question directly and accurately."
+            )
+        else:
+            # Document context (RAG)
+            system_message += (
+                "\n\n**CRITICAL INSTRUCTION**: The user has uploaded documents. "
+                "I am providing you with EXCERPTS from their uploaded documents below. "
+                "You MUST use this document content to answer the user's question. "
+                "Do NOT say you cannot access documents or PDFs - the document content is provided below. "
+                "Answer questions based on the document excerpts provided.\n\n"
+                "=== UPLOADED DOCUMENT CONTENT ===\n"
+                f"{context[:6000]}\n"
+                "=== END DOCUMENT CONTENT ===\n\n"
+                "Use the document content above to answer the user's question directly."
+            )
 
     # Build full message list with system message first
     chat_messages = [{"role": "system", "content": system_message}]
     chat_messages.extend(messages)
     
+    # Debug: Print what we're sending
+    print(f"[DEBUG] System message length: {len(system_message)}")
+    if context:
+        print(f"[DEBUG] Context preview: {context[:300]}...")
+    
     try:
         response = requests.post(
             "http://localhost:11434/api/chat",
             json={
-                "model": "phi3:mini",  # ✅ CHANGED FROM "llama3:8b" TO "phi3"
+                "model": "phi3:mini",
                 "messages": chat_messages,
                 "stream": True,
                 "keep_alive": "10m",

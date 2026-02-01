@@ -22,6 +22,10 @@ embedding_model = SentenceTransformer(
 def extract_text_from_file(file_path, file_type):
     """Extract text from uploaded file with error handling"""
     text = ""
+    
+    # Image file types - store as-is with descriptive text
+    image_types = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+    
     try:
         if file_type == 'pdf':
             reader = PdfReader(file_path)
@@ -37,6 +41,12 @@ def extract_text_from_file(file_path, file_type):
         elif file_type == 'txt':
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 text = f.read()
+        elif file_type in image_types:
+            # For images, create a descriptive placeholder
+            # In the future, this could be enhanced with OCR or vision models
+            import os
+            filename = os.path.basename(file_path)
+            text = f"[Image: {filename}] - This is an uploaded image file. The image content can be viewed in the chat interface."
     except Exception as e:
         logger.error(f"Text extraction failed for {file_path}: {e}")
         text = ""

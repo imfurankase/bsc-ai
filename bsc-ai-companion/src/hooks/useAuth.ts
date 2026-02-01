@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import {
   api,
@@ -7,6 +7,7 @@ import {
   getAccessToken,
   isAuthenticated as checkIsAuthenticated
 } from '@/lib/api';
+import { useAppStore } from '@/store/appStore';
 import type {
   User,
   TokenResponse,
@@ -16,15 +17,19 @@ import type {
 } from '@/types/api-types';
 
 export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const {
+    isAuthenticated,
+    authLoading: isLoading,
+    user,
+    setAuth,
+    setAuthLoading
+  } = useAppStore();
 
   // Check authentication status and load user profile on mount
   useEffect(() => {
     const checkAuth = async () => {
       if (!checkIsAuthenticated()) {
-        setIsLoading(false);
+        setAuthLoading(false);
         return;
       }
 
@@ -34,18 +39,16 @@ export const useAuth = () => {
       if (error) {
         // Token invalid, clear it
         clearTokens();
-        setIsAuthenticated(false);
-        setUser(null);
+        setAuth(false, null);
       } else if (data) {
-        setUser(data);
-        setIsAuthenticated(true);
+        setAuth(true, data);
       }
 
-      setIsLoading(false);
+      setAuthLoading(false);
     };
 
     checkAuth();
-  }, []);
+  }, [setAuth, setAuthLoading]);
 
   const signUp = useCallback(async (
     username: string,
@@ -54,7 +57,7 @@ export const useAuth = () => {
     firstName?: string,
     lastName?: string
   ) => {
-    setIsLoading(true);
+    setAuthLoading(true);
 
     const body: RegisterRequest = {
       username,
@@ -69,29 +72,29 @@ export const useAuth = () => {
 
     if (error) {
       toast.error(error);
-      setIsLoading(false);
+      setAuthLoading(false);
       return { error };
     }
 
     if (data?.success) {
       toast.success('Account created successfully! Please sign in.');
-      setIsLoading(false);
+      setAuthLoading(false);
       return { data };
     }
 
-    setIsLoading(false);
+    setAuthLoading(false);
     return { error: 'Registration failed' };
-  }, []);
+  }, [setAuthLoading]);
 
   const signIn = useCallback(async (username: string, password: string) => {
-    setIsLoading(true);
+    setAuthLoading(true);
 
     const body: LoginRequest = { username, password };
     const { data, error } = await api.post<TokenResponse>('/api/auth/login/', body);
 
     if (error) {
       toast.error(error);
-      setIsLoading(false);
+      setAuthLoading(false);
       return { error };
     }
 
@@ -102,26 +105,24 @@ export const useAuth = () => {
       const profileResult = await api.get<User>('/api/auth/profile/');
 
       if (profileResult.data) {
-        setUser(profileResult.data);
-        setIsAuthenticated(true);
+        setAuth(true, profileResult.data);
         toast.success('Welcome back!');
       }
 
-      setIsLoading(false);
+      setAuthLoading(false);
       return { data };
     }
 
-    setIsLoading(false);
+    setAuthLoading(false);
     return { error: 'Login failed' };
-  }, []);
+  }, [setAuth, setAuthLoading]);
 
   const signOut = useCallback(async () => {
     clearTokens();
-    setUser(null);
-    setIsAuthenticated(false);
+    setAuth(false, null);
     toast.success('Signed out successfully');
     return {};
-  }, []);
+  }, [setAuth]);
 
   // Get current access token (useful for components that need it)
   const getToken = useCallback(() => {

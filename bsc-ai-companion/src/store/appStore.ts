@@ -57,6 +57,13 @@ const mockMessages: Message[] = [
 ];
 
 interface AppState {
+  // Auth state
+  isAuthenticated: boolean;
+  authLoading: boolean;
+  user: { id: number; username: string; email: string; first_name: string; last_name: string } | null;
+  setAuth: (isAuthenticated: boolean, user?: { id: number; username: string; email: string; first_name: string; last_name: string } | null) => void;
+  setAuthLoading: (loading: boolean) => void;
+
   // Data
   workspaces: Workspace[];
   chatbots: Chatbot[];
@@ -64,23 +71,23 @@ interface AppState {
   groups: ChatGroup[];
   chats: Chat[];
   messages: Message[];
-  
+
   // Selection state
   activeWorkspaceId: string | null;
   activeChatbotId: string | null;
   activeChatId: string | null;
-  activeConversationId: string | null;
-  
+  activeConversationId: number | null;
+
   // UI state
   sidebarCollapsed: boolean;
-  
+
   // Actions
   setActiveWorkspace: (id: string) => void;
   setActiveChatbot: (id: string | null) => void;
   setActiveChat: (id: string | null) => void;
-  setActiveConversation: (id: string | null) => void;
+  setActiveConversation: (id: number | null) => void;
   toggleSidebar: () => void;
-  
+
   addMessage: (chatId: string, role: 'user' | 'assistant', content: string, attachments?: MessageAttachment[]) => string;
   updateMessage: (messageId: string, content: string) => void;
   createChat: (chatbotId: string, title: string, groupId?: string) => Chat;
@@ -93,25 +100,32 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  // Auth state
+  isAuthenticated: false,
+  authLoading: true,
+  user: null,
+  setAuth: (isAuthenticated, user = null) => set({ isAuthenticated, user }),
+  setAuthLoading: (authLoading) => set({ authLoading }),
+
   workspaces: mockWorkspaces,
   chatbots: mockChatbots,
   knowledgeBases: mockKnowledgeBases,
   groups: mockGroups,
   chats: mockChats,
   messages: mockMessages,
-  
+
   activeWorkspaceId: '1',
   activeChatbotId: null,
   activeChatId: null,
   activeConversationId: null,
   sidebarCollapsed: true,
-  
+
   setActiveWorkspace: (id) => set({ activeWorkspaceId: id, activeChatbotId: null, activeChatId: null }),
   setActiveChatbot: (id) => set({ activeChatbotId: id, activeChatId: null }),
   setActiveChat: (id) => set({ activeChatId: id }),
   setActiveConversation: (id) => set({ activeConversationId: id }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  
+
   addMessage: (chatId, role, content, attachments) => {
     const newMessage: Message = {
       id: Date.now().toString(),
@@ -122,17 +136,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       createdAt: new Date(),
     };
     set((state) => ({ messages: [...state.messages, newMessage] }));
-    
+
     // Update chat's updatedAt
     set((state) => ({
       chats: state.chats.map((chat) =>
         chat.id === chatId ? { ...chat, updatedAt: new Date() } : chat
       ),
     }));
-    
+
     return newMessage.id;
   },
-  
+
   updateMessage: (messageId, content) => {
     set((state) => ({
       messages: state.messages.map((msg) =>
@@ -140,7 +154,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       ),
     }));
   },
-  
+
   createChat: (chatbotId, title, groupId) => {
     const { activeWorkspaceId } = get();
     const newChat: Chat = {
@@ -155,7 +169,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ chats: [...state.chats, newChat], activeChatId: newChat.id }));
     return newChat;
   },
-  
+
   createChatbot: (chatbot) => {
     const newChatbot: Chatbot = {
       ...chatbot,
@@ -166,7 +180,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ chatbots: [...state.chatbots, newChatbot] }));
     return newChatbot;
   },
-  
+
   updateChatbot: (id, updates) => {
     set((state) => ({
       chatbots: state.chatbots.map((bot) =>
@@ -174,13 +188,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       ),
     }));
   },
-  
+
   deleteChatbot: (id) => {
     set((state) => ({
       chatbots: state.chatbots.filter((bot) => bot.id !== id),
     }));
   },
-  
+
   createKnowledgeBase: (kb) => {
     const newKB: KnowledgeBase = {
       ...kb,
@@ -191,7 +205,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ knowledgeBases: [...state.knowledgeBases, newKB] }));
     return newKB;
   },
-  
+
   createGroup: (group) => {
     const newGroup: ChatGroup = {
       ...group,
@@ -201,7 +215,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ groups: [...state.groups, newGroup] }));
     return newGroup;
   },
-  
+
   createWorkspace: (name, description) => {
     const newWorkspace: Workspace = {
       id: Date.now().toString(),
@@ -209,9 +223,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       description: description || '',
       createdAt: new Date(),
     };
-    set((state) => ({ 
+    set((state) => ({
       workspaces: [...state.workspaces, newWorkspace],
-      activeWorkspaceId: newWorkspace.id 
+      activeWorkspaceId: newWorkspace.id
     }));
     return newWorkspace;
   },

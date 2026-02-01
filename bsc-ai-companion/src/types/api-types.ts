@@ -48,7 +48,7 @@ export interface Message {
 export interface Document {
     id: number;
     title: string;
-    file_type: 'pdf' | 'docx' | 'txt';
+    file_type: 'pdf' | 'docx' | 'txt' | 'jpg' | 'jpeg' | 'png' | 'gif' | 'webp';
     uploaded_at: string;
     processed: boolean;
     file_url: string | null;
