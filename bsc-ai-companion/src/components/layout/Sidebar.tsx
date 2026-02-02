@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Search,
   Edit3,
@@ -18,7 +17,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { ConversationSummary } from '@/types/api-types';
+
+import { ConversationSummary } from '@/types/api-types';
 
 interface SidebarProps {
   currentPage: string;
@@ -138,22 +138,16 @@ export const Sidebar = ({ currentPage, onNavigate }: SidebarProps) => {
         <div className={cn('px-3 pb-2', sidebarCollapsed && 'px-2')}>
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
-              <Link
-                to="/chat/new"
+              <button
+                onClick={handleNewChat}
                 className={cn(
                   'w-full flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-sm font-medium transition-colors',
                   sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2'
                 )}
-                onClick={() => {
-                  // Close sidebar on mobile
-                  if (window.innerWidth < 768) {
-                    toggleSidebar();
-                  }
-                }}
               >
                 <Edit3 className="w-4 h-4" />
                 {!sidebarCollapsed && <span>New chat</span>}
-              </Link>
+              </button>
             </TooltipTrigger>
             {sidebarCollapsed && <TooltipContent side="right">New Chat</TooltipContent>}
           </Tooltip>
@@ -185,50 +179,37 @@ export const Sidebar = ({ currentPage, onNavigate }: SidebarProps) => {
 
           <div className="space-y-0.5">
             {filteredChats.map((chat) => (
-              <div
-                key={chat.id}
-                className={cn(
-                  'group relative w-full flex items-center rounded-lg text-sm transition-colors',
-                  activeConversationId === chat.id
-                    ? 'bg-sidebar-accent text-sidebar-foreground'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-                )}
-              >
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to={`/chat/${chat.id}`}
-                      onClick={() => {
-                        if (window.innerWidth < 768) {
-                          toggleSidebar();
-                        }
-                      }}
-                      className={cn(
-                        'flex-1 flex items-center gap-2',
-                        sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2'
-                      )}
-                    >
-                      {sidebarCollapsed ? (
-                        <span className="w-5 h-5 rounded bg-sidebar-accent flex items-center justify-center text-xs">
-                          {chat.title.charAt(0)}
-                        </span>
-                      ) : (
-                        <span className="truncate text-left">{chat.title}</span>
-                      )}
-                    </Link>
-                  </TooltipTrigger>
-                  {sidebarCollapsed && <TooltipContent side="right">{chat.title}</TooltipContent>}
-                </Tooltip>
-
-                {!sidebarCollapsed && (
+              <Tooltip key={chat.id} delayDuration={0}>
+                <TooltipTrigger asChild>
                   <button
-                    onClick={(e) => handleDeleteChat(e, chat.id)}
-                    className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-sidebar-muted hover:text-red-400 transition-all z-10"
+                    onClick={() => handleSelectConversation(chat.id)}
+                    className={cn(
+                      'w-full flex items-center gap-2 rounded-lg text-sm transition-colors group',
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2',
+                      activeConversationId === chat.id
+                        ? 'bg-sidebar-accent text-sidebar-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                    )}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    {sidebarCollapsed ? (
+                      <span className="w-5 h-5 rounded bg-sidebar-accent flex items-center justify-center text-xs">
+                        {chat.title.charAt(0)}
+                      </span>
+                    ) : (
+                      <>
+                        <span className="truncate flex-1 text-left">{chat.title}</span>
+                        <button
+                          onClick={(e) => handleDeleteChat(e, chat.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-sidebar-muted hover:text-red-400 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                   </button>
-                )}
-              </div>
+                </TooltipTrigger>
+                {sidebarCollapsed && <TooltipContent side="right">{chat.title}</TooltipContent>}
+              </Tooltip>
             ))}
           </div>
 
