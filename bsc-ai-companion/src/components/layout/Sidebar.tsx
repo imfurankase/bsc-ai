@@ -159,7 +159,21 @@ export const Sidebar = ({ currentPage, onNavigate }: SidebarProps) => {
           </Tooltip>
         </div>
 
-// ... (search stays same)
+        {/* Search */}
+        {!sidebarCollapsed && (
+          <div className="px-3 pb-3">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sidebar-accent/50 text-sidebar-muted text-sm">
+              <Search className="w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search chats"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent outline-none text-sidebar-foreground placeholder:text-sidebar-muted"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto scrollbar-thin px-2">
