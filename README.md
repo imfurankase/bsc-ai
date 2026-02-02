@@ -74,12 +74,6 @@ This project relies on Ollama running on the host machine.
     cd bsc-ai
     ```
 
-2.  **Set API Version (If needed)**
-    If your Docker Desktop is older than the build tools, you might see a "version too new" error. Prevent this by running:
-    ```bash
-    export DOCKER_API_VERSION=1.43
-    ```
-
 3.  **Start the Application**
     ```bash
     docker compose up --build
@@ -181,6 +175,22 @@ docker compose up -d --build
 **"Connection Refused" to Ollama inside Docker**
 - Run `curl http://host.docker.internal:11434/api/tags` inside the container.
 - If it fails, check that `OLLAMA_HOST=0.0.0.0` is set on the host machine.
+
+**Docker Build Errors**
+
+If you encounter `driver not connecting` or API version errors:
+
+1.  **Create a clean builder**:
+    ```bash
+    # Create a new builder that bypasses broken default drivers
+    DOCKER_API_VERSION=1.43 docker buildx create --name clean-builder --use --buildkitd-flags '--allow-insecure-entitlement security.insecure' --driver-opt network=host --bootstrap
+    ```
+
+2.  **Run with API Version Enforced**:
+    ```bash
+    export DOCKER_API_VERSION=1.43
+    docker compose up --build
+    ```
 
 **PDF/Image Previews Broken**
 - Ensure the frontend container can reach the backend. The `vite.config.ts` includes proxy settings to handle `/media` requests.
