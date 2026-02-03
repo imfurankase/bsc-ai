@@ -240,9 +240,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8080",      # Vite dev server (current)
     "http://localhost:5173",      # Vite dev server (default)
-
-    # Add your production domain:
-    # "https://ai.bsc.rw",
+    "http://159.26.94.70:5173",   # VPS Frontend
 ]
 
 # Allow credentials (cookies, authorization headers)

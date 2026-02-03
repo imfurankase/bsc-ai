@@ -13,6 +13,7 @@ services:
       - DEBUG=1
       - DJANGO_ALLOWED_HOSTS=*
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - TAVILY_API_KEY=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
       # Add other environment variables as needed
 
   frontend:
@@ -25,7 +26,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
       - VITE_API_TARGET=http://backend:8000
     depends_on:
       - backend
