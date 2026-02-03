@@ -22,7 +22,7 @@ from .serializers import (
     UserSerializer,
     UserRegistrationSerializer,
 )
-from .ollama_client import get_phi3_response_stream
+from .ollama_client import get_ai_response_stream
 from .document_service import process_document, search_documents
 from .web_search import get_web_context
 
@@ -226,7 +226,7 @@ class SendMessageView(APIView):
         def event_stream():
             full_response = ""
             try:
-                for chunk in get_phi3_response_stream(messages, context=final_context):
+                for chunk in get_ai_response_stream(messages, context=final_context):
                     full_response += chunk
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
                 

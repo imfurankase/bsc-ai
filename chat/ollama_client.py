@@ -5,8 +5,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 
-def get_phi3_response_stream(messages, context=None):
-    """Stream response from Phi-3 Mini with BSC branding, chat history, and optional RAG context"""
+
+def get_ai_response_stream(messages, context=None):
+    """Stream response from AI Model (Llama 3 70b) with BSC branding, chat history, and optional RAG context"""
     # System message that enforces brand identity and behavior
     system_message = (
         "You are BSC AI, an intelligent assistant developed by BSC (Broadband Systems Corporation) "
@@ -64,7 +65,7 @@ def get_phi3_response_stream(messages, context=None):
         response = requests.post(
             f"{base_url}/api/chat",
             json={
-                "model": "phi3:mini",
+                "model": "llama3:70b",
                 "messages": chat_messages,
                 "stream": True,
                 "keep_alive": "10m",
@@ -89,3 +90,10 @@ def get_phi3_response_stream(messages, context=None):
     except Exception as e:
         print(f"[ERROR] Ollama Request Failed: {str(e)}")
         yield f"⚠️ Error: {str(e)}"
+
+def get_ai_response(messages, context=None):
+    """Get full response from AI Model (non-streaming wrapper)"""
+    full_response = ""
+    for chunk in get_ai_response_stream(messages, context):
+        full_response += chunk
+    return full_response

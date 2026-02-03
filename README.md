@@ -3,7 +3,7 @@
 A locally-hosted AI chat interface combining a Django backend with a modern React frontend. Designed to run offline using Ollama, with Docker support for easy deployment.
 
 ## 🌟 Features
-- **AI Chat**: Powered by Ollama (specifically `phi3:mini` by default).
+- **AI Chat**: Powered by Ollama (specifically `llama3:70b` by default).
 - **Document RAG**: Upload PDF/Text documents and chat with them.
 - **Web Search**: Real-time web search capabilities.
 - **Modern UI**: React-based interface with streaming responses.
@@ -30,7 +30,7 @@ This project relies on Ollama running on the host machine.
 2.  **Pull the Model**
     Open your terminal and run:
     ```bash
-    ollama pull phi3:mini
+    ollama pull llama3:70b
     ```
 
 3.  **Configure Host Binding (IMPORTANT)**
@@ -150,7 +150,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart ollama
 
 # Pull the model
-ollama pull phi3:mini
+ollama pull llama3:70b
 ```
 
 ### 4. Deploy the Application

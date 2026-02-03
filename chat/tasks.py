@@ -1,11 +1,11 @@
 from celery import shared_task
-from .ollama_client import get_phi3_response
+from .ollama_client import get_ai_response
 from .models import ChatMessage
 
 @shared_task
 def process_ai_response(user_id, message_id, messages):
     """Process AI response in background"""
-    ai_response = get_phi3_response(messages)
+    ai_response = get_ai_response(messages)
     
     # Save AI response
     ChatMessage.objects.create(
