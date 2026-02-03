@@ -7,14 +7,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Initialize Jina Embeddings v2 Base (Download from HuggingFace)
-# Jina v2 requires normalize_embeddings=True for cosine similarity
-MODEL_NAME = 'jinaai/jina-embeddings-v2-base-en'
+# Initialize Sentence Transformer (Standard MiniLM)
+# Robust, fast, and compatible with all versions
+MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
 
 embedding_model = SentenceTransformer(
     MODEL_NAME,
     device='cpu',  # Explicitly use CPU to reserve VRAM for Llama 3.3
-    trust_remote_code=True
 )
 
 
@@ -72,7 +71,7 @@ def process_document(document_id):
         chunks = chunk_text(text)
 
         for i, chunk in enumerate(chunks):
-            # Jina v2: MUST use normalize_embeddings=True
+            # MiniLM: Normalize for cosine similarity
             embedding = embedding_model.encode(
                 chunk,
                 normalize_embeddings=True
@@ -116,6 +115,10 @@ def search_documents(user_id, query, top_k=3):
         results = []
         for chunk in chunks:
             if chunk.embedding:
+                # Safety check: Skip chunks with wrong dimension (from previous model)
+                if len(chunk.embedding) != len(query_embedding):
+                    continue
+                    
                 similarity = dot(query_embedding, chunk.embedding)  # Already normalized
                 results.append({
                     'document_id': chunk.document.id,
