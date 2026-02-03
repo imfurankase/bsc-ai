@@ -127,8 +127,8 @@ def send_message(request, conversation_id=None):
                 for result in results:
                     context_parts.append(f"[From: {result['document_title']}]\n{result['content']}\n---")
                 context = "\n\n".join(context_parts)
-                if len(context) > 1500:
-                    context = context[:1500] + "..."
+                if len(context) > 12000:
+                    context = context[:12000] + "..."
 
     # === STEP 3: Combine contexts ===
     final_context = ""

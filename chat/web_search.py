@@ -76,7 +76,7 @@ def get_web_context(query):
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         # Submit fetch tasks for top 2 results only to save time
         future_to_url = {
-            executor.submit(fetch_webpage_content, result['url'], max_chars=1500): result 
+            executor.submit(fetch_webpage_content, result['url'], max_chars=6000): result 
             for result in results[:2]
         }
         
@@ -103,7 +103,7 @@ def get_web_context(query):
         
         # Add content if we fetched it (only for top 2)
         if 'content' in result and result['content']:
-            context_parts.append(f"   Content: {result['content'][:800]}...")
+            context_parts.append(f"   Content: {result['content'][:4000]}...")
         
         context_parts.append(f"   Source: {result['url']}\n")
     
