@@ -72,8 +72,8 @@ def get_ai_response_stream(messages, context=None):
                 "options": {
                     "temperature": 0.1,
                     "top_p": 0.95,
-                    "num_predict": 400,
-                    "num_ctx": 4096,
+                    "num_predict": -1,
+                    "num_ctx": 8192,
                 }
             },
             stream=True,
