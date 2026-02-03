@@ -241,6 +241,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",      # Vite dev server (current)
     "http://localhost:5173",      # Vite dev server (default)
     "http://159.26.94.70:5173",   # VPS Frontend
+    "http://8.17.147.162:10015",
 ]
 
 # Allow credentials (cookies, authorization headers)

@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def get_ai_response_stream(messages, context=None):
-    """Stream response from AI Model (Llama 3 70b) with BSC branding, chat history, and optional RAG context"""
+    """Stream response from AI Model (Llama 3.3 70b) with BSC branding, chat history, and optional RAG context"""
     # System message that enforces brand identity and behavior
     system_message = (
         "You are BSC AI, an intelligent assistant developed by BSC (Broadband Systems Corporation) "
@@ -65,7 +65,7 @@ def get_ai_response_stream(messages, context=None):
         response = requests.post(
             f"{base_url}/api/chat",
             json={
-                "model": "llama3:70b",
+                "model": "llama3.3:70b",
                 "messages": chat_messages,
                 "stream": True,
                 "keep_alive": "10m",
