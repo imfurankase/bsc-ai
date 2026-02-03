@@ -7,15 +7,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Initialize Jina Embeddings v2 Base (loaded from local path)
+# Initialize Jina Embeddings v2 Base (Download from HuggingFace)
 # Jina v2 requires normalize_embeddings=True for cosine similarity
-# Construct path to jina_emb relative to this file
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(PROJECT_ROOT, 'jina_emb')
+MODEL_NAME = 'jinaai/jina-embeddings-v2-base-en'
 
 embedding_model = SentenceTransformer(
-    MODEL_PATH,
-    device='cpu'  # Explicitly use CPU to reserve VRAM for Llama 3.3
+    MODEL_NAME,
+    device='cpu',  # Explicitly use CPU to reserve VRAM for Llama 3.3
+    trust_remote_code=True
 )
 
 
