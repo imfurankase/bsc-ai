@@ -7,21 +7,23 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Initialize Jina Embeddings v2 Base (loaded from local path)
-# Jina v2 requires normalize_embeddings=True for cosine similarity
-# Construct path to jina_emb relative to this file
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(PROJECT_ROOT, 'jina_emb')
+# Initialize Sentence Transformer (Standard MiniLM)
+# Robust, fast, and compatible with all versions
+MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
 
 embedding_model = SentenceTransformer(
-    MODEL_PATH,
-    device='cpu'  # Explicitly use CPU to reserve VRAM for Llama 3.3
+    MODEL_NAME,
+    device='cpu',  # Explicitly use CPU to reserve VRAM for Llama 3.3
 )
 
 
 def extract_text_from_file(file_path, file_type):
     """Extract text from uploaded file with error handling"""
     text = ""
+    
+    # Image file types - store as-is with descriptive text
+    image_types = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+    
     try:
         if file_type == 'pdf':
             reader = PdfReader(file_path)
@@ -37,6 +39,12 @@ def extract_text_from_file(file_path, file_type):
         elif file_type == 'txt':
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 text = f.read()
+        elif file_type in image_types:
+            # For images, create a descriptive placeholder
+            # In the future, this could be enhanced with OCR or vision models
+            import os
+            filename = os.path.basename(file_path)
+            text = f"[Image: {filename}] - This is an uploaded image file. The image content can be viewed in the chat interface."
     except Exception as e:
         logger.error(f"Text extraction failed for {file_path}: {e}")
         text = ""
@@ -63,7 +71,7 @@ def process_document(document_id):
         chunks = chunk_text(text)
 
         for i, chunk in enumerate(chunks):
-            # Jina v2: MUST use normalize_embeddings=True
+            # MiniLM: Normalize for cosine similarity
             embedding = embedding_model.encode(
                 chunk,
                 normalize_embeddings=True
@@ -107,6 +115,10 @@ def search_documents(user_id, query, top_k=3):
         results = []
         for chunk in chunks:
             if chunk.embedding:
+                # Safety check: Skip chunks with wrong dimension (from previous model)
+                if len(chunk.embedding) != len(query_embedding):
+                    continue
+                    
                 similarity = dot(query_embedding, chunk.embedding)  # Already normalized
                 results.append({
                     'document_id': chunk.document.id,

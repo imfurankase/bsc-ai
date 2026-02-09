@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, Menu } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { ChatInput } from './ChatInput';
 import { MessageBubble } from './MessageBubble';
 import { WelcomeScreen } from './WelcomeScreen';
 import { KnowledgeBasePickerDialog } from './KnowledgeBasePickerDialog';
+import { FilePreviewDialog } from './FilePreviewDialog';
 import { useChat } from '@/hooks/useChat';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useAppStore } from '@/store/appStore';
 import { useBufferedStreaming } from '@/hooks/useBufferedStreaming';
 import type { MessageAttachment } from '@/types';
-import type { ConversationSummary, ConversationDetail } from '@/types/api-types';
+import type { ConversationSummary, Message as ApiMessage } from '@/types/api-types';
 
 type Message = {
   id: string;
@@ -19,37 +19,30 @@ type Message = {
   attachments?: MessageAttachment[];
 };
 
-type Conversation = {
-  id: number;
-  title: string;
-  created_at: string;
-  updated_at: string;
-};
-
 export const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<(ConversationSummary | ConversationDetail)[]>([]);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [kbPickerOpen, setKbPickerOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ url: string; type: string; name: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { toggleSidebar, sidebarCollapsed, activeConversationId, setActiveConversation } = useAppStore();
+  const { toggleSidebar, activeConversationId, setActiveConversation } = useAppStore();
 
   const {
     streamChat,
-    loadMessages,
-    createConversation,
+    loadConversation,
     loadConversations,
-    updateConversationTitle,
+    isLoading: chatLoading,
   } = useChat();
 
-  const { uploadDocument, getDocumentContext } = useDocuments();
+  const { uploadDocument } = useDocuments();
 
   // Buffered streaming for smooth text display
   const { addChunk, complete, reset: resetBuffer, getFullContent } = useBufferedStreaming({
-    minBufferSize: 10,    // Start displaying after just 10 chars
-    charsPerFrame: 2,     // Display 2 chars per frame for smooth effect
-    frameInterval: 20,    // ~50fps
+    minBufferSize: 10,
+    charsPerFrame: 2,
+    frameInterval: 20,
   });
 
   // Load conversations on mount
@@ -60,17 +53,19 @@ export const ChatInterface = () => {
   // Load messages when conversation changes
   useEffect(() => {
     if (activeConversationId) {
-      loadMessages(activeConversationId).then(dbMessages => {
-        setMessages(dbMessages.map(m => ({
-          id: String(m.id),
-          role: m.is_user_message ? 'user' : 'assistant',
-          content: m.content,
-        })));
+      loadConversation(activeConversationId).then(conversation => {
+        if (conversation?.messages) {
+          setMessages(conversation.messages.map((m: ApiMessage) => ({
+            id: m.id.toString(),
+            role: m.is_user_message ? 'user' : 'assistant',
+            content: m.content,
+          })));
+        }
       });
     } else {
       setMessages([]);
     }
-  }, [activeConversationId, loadMessages]);
+  }, [activeConversationId, loadConversation]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,28 +74,21 @@ export const ChatInterface = () => {
   const handleSend = useCallback(async (input: string, attachments?: MessageAttachment[]) => {
     if (!input.trim() && (!attachments || attachments.length === 0)) return;
 
-    let conversationId = activeConversationId;
+    const conversationId = activeConversationId;
 
-    // Create new conversation if needed
-    if (!conversationId) {
-      const title = input.trim().slice(0, 50) || 'New Chat';
-      const conversation = await createConversation(title);
-      if (!conversation) return;
-      conversationId = conversation.id;
-      setActiveConversation(conversationId);
-      setConversations(prev => [conversation, ...prev]);
-    }
+    // Determine chat type based on attachments
+    const chatType = (attachments && attachments.length > 0) ? 'document' : 'general';
 
-    // Handle file uploads
+    // Handle file uploads first (if any)
     if (attachments && attachments.length > 0) {
       for (const attachment of attachments) {
         if (attachment.file) {
-          await uploadDocument(attachment.file, conversationId);
+          await uploadDocument(attachment.file, conversationId || undefined);
         }
       }
     }
 
-    // Add user message
+    // Add user message to UI immediately
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -110,17 +98,6 @@ export const ChatInterface = () => {
     setMessages(prev => [...prev, userMessage]);
 
     setIsTyping(true);
-
-    // Get document context for this conversation
-    const documentContext = await getDocumentContext(conversationId);
-
-    // Build message history for AI
-    const messageHistory = [...messages, userMessage].map(m => ({
-      role: m.role,
-      content: m.content,
-    }));
-
-    // Reset buffer for new message
     resetBuffer();
 
     // Create placeholder for assistant message
@@ -138,35 +115,33 @@ export const ChatInterface = () => {
       );
     };
 
+    // Stream the chat - backend handles creating conversation if needed
     await streamChat({
       message: input,
-      conversationId,
+      conversationId: conversationId || undefined,
+      chatType,
       onDelta: (chunk) => {
         addChunk(chunk, updateMessage);
       },
-      onDone: async () => {
+      onDone: async (newConversationId) => {
         // Complete the buffered display
         complete(updateMessage);
 
-        // Small delay to let buffer finish, then save
-        setTimeout(async () => {
-          setIsTyping(false);
+        setIsTyping(false);
 
-          // Update conversation title if it's the first message
-          if (messages.length === 0 && input.trim()) {
-            const newTitle = input.slice(0, 50);
-            await updateConversationTitle(conversationId!, newTitle);
-            setConversations(prev =>
-              prev.map(c => c.id === conversationId ? { ...c, title: newTitle } : c)
-            );
-          }
-        }, 200);
+        // If this was a new conversation, update the active conversation
+        if (newConversationId && !conversationId) {
+          setActiveConversation(newConversationId);
+          // Reload conversations list to show the new one
+          const updatedConversations = await loadConversations();
+          setConversations(updatedConversations);
+        }
       },
     });
-  }, [activeConversationId, messages, createConversation, streamChat, getDocumentContext, uploadDocument, updateConversationTitle, resetBuffer, addChunk, complete, setActiveConversation]);
+  }, [activeConversationId, streamChat, uploadDocument, resetBuffer, addChunk, complete, setActiveConversation, loadConversations]);
 
   const handleKBSelect = (attachments: MessageAttachment[]) => {
-    // Handle KB selection
+    // Handle KB selection - can be expanded later
   };
 
   const handleNewChat = useCallback(() => {
@@ -235,7 +210,7 @@ export const ChatInterface = () => {
               key={message.id}
               message={{
                 id: message.id,
-                chatId: String(activeConversationId || ''),
+                chatId: activeConversationId?.toString() || '',
                 role: message.role,
                 content: message.content,
                 attachments: message.attachments,
@@ -243,11 +218,12 @@ export const ChatInterface = () => {
               }}
               isStreaming={isTyping && index === messages.length - 1 && message.role === 'assistant'}
               animationDelay={index * 30}
+              onPreview={(file) => setPreviewFile(file)}
             />
           ))}
 
-          {/* Typing Indicator */}
-          {isTyping && messages[messages.length - 1]?.role === 'user' && (
+          {/* Typing Indicator - show when waiting for AI response */}
+          {isTyping && messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1]?.content === '' && (
             <div className="flex gap-3 animate-fade-in">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-2xl blur-md opacity-40" />
@@ -281,6 +257,13 @@ export const ChatInterface = () => {
         open={kbPickerOpen}
         onOpenChange={setKbPickerOpen}
         onSelect={handleKBSelect}
+      />
+
+      {/* File Preview Dialog */}
+      <FilePreviewDialog
+        open={!!previewFile}
+        onOpenChange={(open) => !open && setPreviewFile(null)}
+        file={previewFile}
       />
     </div>
   );

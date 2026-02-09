@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Paperclip, Mic, MicOff, X, FileText, Image, Link2, Database, Plus, StopCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import type { MessageAttachment } from '@/types';
+import type { SpeechRecognition } from '@/types/speech';
 
 interface ChatInputProps {
   onSend: (message: string, attachments?: MessageAttachment[]) => void;
@@ -59,16 +60,55 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
     }
   };
 
-  const toggleRecording = () => {
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  const toggleRecording = useCallback(() => {
     if (isRecording) {
-      // Stop recording - simulate transcription
+      // Stop recording
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
       setIsRecording(false);
-      // Simulate transcribed text
-      setInput(prev => prev + (prev ? ' ' : '') + 'This is transcribed speech from the microphone...');
     } else {
+      // Start recording
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Your browser doesn't support speech recognition.");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        const results = event.results;
+        for (let i = event.resultIndex; i < results.length; i++) {
+          transcript += results[i][0].transcript;
+        }
+        // Append to existing input if it's the start
+        setInput(prev => {
+          // Basic logic to append; for production might need smarter cursor handling
+          return prev ? prev + ' ' + transcript : transcript;
+        });
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
       setIsRecording(true);
     }
-  };
+  }, [isRecording]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

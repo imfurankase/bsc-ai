@@ -1,11 +1,13 @@
 import requests
 import json
+import os
 import logging
 logging.basicConfig(level=logging.INFO)
 
 
-def get_phi3_response_stream(messages, context=None):
-    """Stream response from Phi-3 Mini with BSC branding, chat history, and optional RAG context"""
+
+def get_ai_response_stream(messages, context=None):
+    """Stream response from AI Model (Llama 3.3 70b) with BSC branding, chat history, and optional RAG context"""
     # System message that enforces brand identity and behavior
     system_message = (
         "You are BSC AI, an intelligent assistant developed by BSC (Broadband Systems Corporation) "
@@ -15,37 +17,63 @@ def get_phi3_response_stream(messages, context=None):
         "Always refer to yourself as 'BSC AI' or 'I, BSC AI'. "
         "Keep responses professional, helpful, and grounded in facts. "
         "If asked about your origin, say: 'I was developed by BSC in Rwanda to advance local AI capabilities.' "
-        "If real-time data is provided (weather, stock prices), use it to answer accurately. "
-        "If no real-time data is given, do not invent numbers. Say 'I don't have live data for that.' "
     )
 
     if context:
-        # Append document context to system message
-        system_message += (
-            "\n\nUse the following DOCUMENT EXCERPTS to answer questions when relevant. "
-            "If the user refers to prior conversation (e.g., 'the 2nd idea'), recall it from chat history. "
-            "If the answer isn't in the documents, rely on the conversation history or say you don't know.\n\n"
-            "=== DOCUMENT EXCERPTS ===\n"
-            f"{context[:6000]}\n"
-            "=== END DOCUMENT ==="
-        )
+        # Check if it's web search results or document context
+        # The context comes wrapped with [Real-time Data]: prefix from _combine_contexts
+        is_realtime = "[Real-time Data]" in context or "[Web Search Results" in context
+        print(f"[DEBUG] Context type detection - is_realtime: {is_realtime}")
+        
+        if is_realtime:
+            system_message += (
+                "\n\n**CRITICAL INSTRUCTION**: I am providing you with REAL-TIME DATA from a web search. "
+                "You MUST use this information to answer the user's question accurately. "
+                "Do NOT say you don't have real-time data - USE THE DATA PROVIDED BELOW. "
+                "Always cite the source when answering.\n\n"
+                "=== REAL-TIME SEARCH RESULTS ===\n"
+                f"{context}\n"
+                "=== END SEARCH RESULTS ===\n\n"
+                "Based on the search results above, answer the user's question directly and accurately."
+            )
+        else:
+            # Document context (RAG)
+            system_message += (
+                "\n\n**CRITICAL INSTRUCTION**: The user has uploaded documents. "
+                "I am providing you with EXCERPTS from their uploaded documents below. "
+                "You MUST use this document content to answer the user's question. "
+                "Do NOT say you cannot access documents or PDFs - the document content is provided below. "
+                "Answer questions based on the document excerpts provided.\n\n"
+                "=== UPLOADED DOCUMENT CONTENT ===\n"
+                f"{context[:6000]}\n"
+                "=== END DOCUMENT CONTENT ===\n\n"
+                "Use the document content above to answer the user's question directly."
+            )
 
     # Build full message list with system message first
     chat_messages = [{"role": "system", "content": system_message}]
     chat_messages.extend(messages)
     
+    # Debug: Print what we're sending
+    print(f"[DEBUG] System message length: {len(system_message)}")
+    if context:
+        print(f"[DEBUG] Context preview: {context[:300]}...")
+    
     try:
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        print(f"[DEBUG] Ollama Base URL: {base_url}")
         response = requests.post(
-            "http://localhost:11434/api/chat",
+            f"{base_url}/api/chat",
             json={
-                "model": "phi3:mini",  # ✅ CHANGED FROM "llama3:8b" TO "phi3"
+                "model": "llama3.3:70b",
                 "messages": chat_messages,
                 "stream": True,
                 "keep_alive": "10m",
                 "options": {
                     "temperature": 0.1,
                     "top_p": 0.95,
-                    "num_predict": 400,
+                    "num_predict": -1,
+                    "num_ctx": 8192,
                 }
             },
             stream=True,
@@ -61,4 +89,12 @@ def get_phi3_response_stream(messages, context=None):
                 except:
                     continue
     except Exception as e:
+        print(f"[ERROR] Ollama Request Failed: {str(e)}")
         yield f"⚠️ Error: {str(e)}"
+
+def get_ai_response(messages, context=None):
+    """Get full response from AI Model (non-streaming wrapper)"""
+    full_response = ""
+    for chunk in get_ai_response_stream(messages, context):
+        full_response += chunk
+    return full_response

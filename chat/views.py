@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from .models import Conversation, ChatMessage, Document, DocumentChunk, ChatAttachment 
-from .ollama_client import get_phi3_response_stream
+from .ollama_client import get_ai_response_stream
 from .document_service import process_document, search_documents
 import json
 import time
@@ -127,8 +127,8 @@ def send_message(request, conversation_id=None):
                 for result in results:
                     context_parts.append(f"[From: {result['document_title']}]\n{result['content']}\n---")
                 context = "\n\n".join(context_parts)
-                if len(context) > 1500:
-                    context = context[:1500] + "..."
+                if len(context) > 12000:
+                    context = context[:12000] + "..."
 
     # === STEP 3: Combine contexts ===
     final_context = ""
@@ -155,7 +155,7 @@ def send_message(request, conversation_id=None):
     def event_stream():
         full_response = ""
         try:
-            for chunk in get_phi3_response_stream(messages, context=final_context):
+            for chunk in get_ai_response_stream(messages, context=final_context):
                 full_response += chunk
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"  # ✅ CORRECT - added "data:"
 

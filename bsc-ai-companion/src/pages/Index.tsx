@@ -34,7 +34,7 @@ const Index = () => {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar currentPage="chat" onNavigate={() => {}} />
+      <Sidebar currentPage="chat" onNavigate={() => { }} />
       <main className="flex-1 overflow-auto w-full">
         <ChatInterface />
       </main>

@@ -86,20 +86,28 @@ class DocumentUploadSerializer(serializers.Serializer):
     document = serializers.FileField()
     conversation_id = serializers.IntegerField(required=False, allow_null=True)
     
+    # Supported file types
+    ALLOWED_DOCUMENTS = ['pdf', 'docx', 'txt']
+    ALLOWED_IMAGES = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+    
     def validate_document(self, value):
         # Get file extension
         file_name = value.name
         file_type = file_name.split('.')[-1].lower()
         
-        if file_type not in ['pdf', 'docx', 'txt']:
+        all_allowed = self.ALLOWED_DOCUMENTS + self.ALLOWED_IMAGES
+        
+        if file_type not in all_allowed:
             raise serializers.ValidationError(
-                "Unsupported file type. Please upload PDF, DOCX, or TXT files."
+                f"Unsupported file type. Please upload PDF, DOCX, TXT, or image files (JPG, PNG, GIF, WebP)."
             )
         
-        # Check file size (max 10MB)
-        if value.size > 10 * 1024 * 1024:
+        # Check file size (10MB for docs, 20MB for images)
+        max_size = 20 * 1024 * 1024 if file_type in self.ALLOWED_IMAGES else 10 * 1024 * 1024
+        if value.size > max_size:
+            max_mb = max_size // (1024 * 1024)
             raise serializers.ValidationError(
-                "File too large. Maximum size is 10MB."
+                f"File too large. Maximum size is {max_mb}MB."
             )
         
         return value

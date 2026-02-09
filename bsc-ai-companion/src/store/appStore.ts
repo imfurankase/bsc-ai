@@ -57,6 +57,13 @@ const mockMessages: Message[] = [
 ];
 
 interface AppState {
+  // Auth state
+  isAuthenticated: boolean;
+  authLoading: boolean;
+  user: { id: number; username: string; email: string; first_name: string; last_name: string } | null;
+  setAuth: (isAuthenticated: boolean, user?: { id: number; username: string; email: string; first_name: string; last_name: string } | null) => void;
+  setAuthLoading: (loading: boolean) => void;
+
   // Data
   workspaces: Workspace[];
   chatbots: Chatbot[];
@@ -93,6 +100,13 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  // Auth state
+  isAuthenticated: false,
+  authLoading: true,
+  user: null,
+  setAuth: (isAuthenticated, user = null) => set({ isAuthenticated, user }),
+  setAuthLoading: (authLoading) => set({ authLoading }),
+
   workspaces: mockWorkspaces,
   chatbots: mockChatbots,
   knowledgeBases: mockKnowledgeBases,

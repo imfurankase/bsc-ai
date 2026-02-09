@@ -22,7 +22,7 @@ from .serializers import (
     UserSerializer,
     UserRegistrationSerializer,
 )
-from .ollama_client import get_phi3_response_stream
+from .ollama_client import get_ai_response_stream
 from .document_service import process_document, search_documents
 from .web_search import get_web_context
 
@@ -207,7 +207,9 @@ class SendMessageView(APIView):
         )
         
         # === STEP 1: Check for tool use ===
+        print(f"[DEBUG] Checking tool context for message: '{message_text}'")
         tool_context = self._get_tool_context(message_text)
+        print(f"[DEBUG] Tool context result: {tool_context[:100] if tool_context else 'None'}...")
         
         # === STEP 2: Get document context (RAG) ===
         doc_context = self._get_document_context(
@@ -218,13 +220,13 @@ class SendMessageView(APIView):
         final_context = self._combine_contexts(tool_context, doc_context)
         
         # === STEP 4: Build chat history ===
-        messages = self._build_chat_history(conversation, message_text)
+        messages = self._build_chat_history(conversation, message_text, tool_context=tool_context, doc_context=doc_context)
         
         # === STEP 5: Stream response ===
         def event_stream():
             full_response = ""
             try:
-                for chunk in get_phi3_response_stream(messages, context=final_context):
+                for chunk in get_ai_response_stream(messages, context=final_context):
                     full_response += chunk
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
                 
@@ -290,11 +292,34 @@ class SendMessageView(APIView):
             if tickers:
                 tool_context = get_stock_price(tickers[0]) or ""
         
-        # Web search detection
-        elif any(keyword in lower_msg for keyword in ['search', 'latest', 'recent', 'news', 'current', 'today', 'what is happening', 'browse']):
-            web_context = get_web_context(message_text)
-            if web_context:
-                tool_context = f"[Web Search]: {web_context}"
+        # Web search detection - expanded keywords for time-sensitive and factual queries
+        else:
+            search_triggers = [
+                # Direct search requests
+                'search', 'look up', 'find out', 'google', 'browse',
+                # Time-sensitive keywords
+                'latest', 'recent', 'current', 'today', 'yesterday', 'this week', 'this month', 'this year',
+                '2024', '2025', '2026', '2027',
+                # News and events
+                'news', 'what is happening', 'what happened', 'update',
+                # Sports and competitions
+                'winner', 'won', 'champion', 'championship', 'cup', 'tournament', 'match', 'score',
+                'afcon', 'world cup', 'premier league', 'champions league',
+                # Current facts queries
+                'who is the', 'what is the current', 'how much is', 'price of',
+                # People in current roles
+                'president of', 'ceo of', 'prime minister',
+            ]
+            
+            matched_triggers = [t for t in search_triggers if t in lower_msg]
+            print(f"[DEBUG] Web search check - Message: '{lower_msg}', Matched triggers: {matched_triggers}")
+            
+            if matched_triggers:
+                print(f"[DEBUG] Triggering web search for: {message_text}")
+                web_context = get_web_context(message_text)
+                print(f"[DEBUG] Web context returned: {web_context[:200] if web_context else 'None'}...")
+                if web_context:
+                    tool_context = f"[Web Search Results - Use this data to answer]:\n{web_context}"
         
         return tool_context
     
@@ -321,8 +346,8 @@ class SendMessageView(APIView):
                             f"[From: {result['document_title']}]\n{result['content']}\n---"
                         )
                     context = "\n\n".join(context_parts)
-                    if len(context) > 1500:
-                        context = context[:1500] + "..."
+                    if len(context) > 12000:
+                        context = context[:12000] + "..."
         
         return context
     
@@ -341,7 +366,7 @@ class SendMessageView(APIView):
         
         return final_context
     
-    def _build_chat_history(self, conversation, current_message):
+    def _build_chat_history(self, conversation, current_message, tool_context=None, doc_context=None):
         """Build chat history for context"""
         previous_messages = ChatMessage.objects.filter(
             conversation=conversation
@@ -353,7 +378,28 @@ class SendMessageView(APIView):
             role = "user" if msg.is_user_message else "assistant"
             messages.append({"role": role, "content": msg.content})
         
-        messages.append({"role": "user", "content": current_message})
+        # Build enhanced message with context
+        enhanced_message = current_message
+        
+        # If we have tool context (like web search results), inject it into the user message
+        if tool_context and "[Web Search Results" in tool_context:
+            enhanced_message = (
+                f"{current_message}\n\n"
+                f"[Here are current search results to help answer this question:]\n"
+                f"{tool_context}\n\n"
+                f"[Use the search results above to answer my question about: {current_message}]"
+            )
+        # If we have document context (RAG), inject it into the user message
+        elif doc_context:
+            enhanced_message = (
+                f"{current_message}\n\n"
+                f"[Here is content from my uploaded documents that is relevant to my question:]\n"
+                f"{doc_context[:4000]}\n\n"
+                f"[Use the document content above to answer my question: {current_message}]"
+            )
+        
+        messages.append({"role": "user", "content": enhanced_message})
+        
         return messages
 
 
