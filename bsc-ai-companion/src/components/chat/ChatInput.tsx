@@ -73,7 +73,7 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    
+
     const newAttachments: MessageAttachment[] = Array.from(files).map(file => ({
       id: Date.now().toString() + Math.random(),
       name: file.name,
@@ -82,7 +82,7 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
       source: 'upload' as const,
       file: file,
     }));
-    
+
     setAttachments(prev => [...prev, ...newAttachments]);
     e.target.value = '';
   };
@@ -122,8 +122,8 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
   return (
     <div className={cn(
       "p-2 sm:p-4 border-t backdrop-blur-xl",
-      darkMode 
-        ? "border-white/10 bg-[hsl(220,20%,12%)]" 
+      darkMode
+        ? "border-white/10 bg-[hsl(220,20%,12%)]"
         : "border-border/50 bg-gradient-to-t from-card via-card to-transparent"
     )}>
       <div className="max-w-4xl mx-auto space-y-2 sm:space-y-3">
@@ -238,7 +238,7 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder={placeholder || "Message BSC AI..."}
+              placeholder={placeholder || "Message AI Assistant..."}
               rows={1}
               disabled={disabled || isRecording}
               className={cn(
@@ -253,7 +253,7 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
               )}
               style={{ minHeight: '44px', maxHeight: '200px' }}
             />
-            
+
             {/* Recording Indicator */}
             {isRecording && (
               <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-2 animate-pulse">
@@ -270,7 +270,7 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
             size="icon"
             className={cn(
               "hidden sm:flex h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl border transition-all duration-300 flex-shrink-0",
-              isRecording 
+              isRecording
                 ? (darkMode ? "border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse" : "border-destructive bg-destructive hover:bg-destructive/90 animate-pulse")
                 : (darkMode ? "border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white" : "border-border/50 bg-muted/30 hover:bg-muted hover:border-primary/30")
             )}
@@ -299,10 +299,10 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
 
         {/* Footer */}
         <p className={cn("text-center text-[10px] sm:text-xs", darkMode ? "text-white/30" : "text-muted-foreground")}>
-          BSC AI may produce inaccurate information.
+          AI Assistant may produce inaccurate information.
         </p>
       </div>
-      
+
       <input
         ref={fileInputRef}
         type="file"

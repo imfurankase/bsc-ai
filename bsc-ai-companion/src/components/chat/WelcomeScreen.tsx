@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Mic, MicOff, X, FileText, Image, Link2, Database, Plus, StopCircle, Code, GraduationCap, TrendingUp, PenLine, Lightbulb, Sparkles, Menu } from 'lucide-react';
+import { Send, Paperclip, Mic, MicOff, X, FileText, Image, Link2, Database, Plus, StopCircle, Code, GraduationCap, TrendingUp, PenLine, Lightbulb, Sparkles, Menu, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/store/appStore';
-import bscLogoIcon from '@/assets/bsc-logo-icon.png';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +42,7 @@ export const WelcomeScreen = ({ onSend, onOpenKnowledgeBase, disabled }: Welcome
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingInterval = useRef<NodeJS.Timeout | null>(null);
-  
+
   const { toggleSidebar } = useAppStore();
 
   useEffect(() => {
@@ -88,7 +87,7 @@ export const WelcomeScreen = ({ onSend, onOpenKnowledgeBase, disabled }: Welcome
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    
+
     const newAttachments: MessageAttachment[] = Array.from(files).map(file => ({
       id: Date.now().toString() + Math.random(),
       name: file.name,
@@ -96,7 +95,7 @@ export const WelcomeScreen = ({ onSend, onOpenKnowledgeBase, disabled }: Welcome
       size: file.size,
       source: 'upload' as const,
     }));
-    
+
     setAttachments(prev => [...prev, ...newAttachments]);
     e.target.value = '';
   };
@@ -147,11 +146,11 @@ export const WelcomeScreen = ({ onSend, onOpenKnowledgeBase, disabled }: Welcome
       >
         <Menu className="w-5 h-5" />
       </button>
-      
+
       {/* Greeting */}
       <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 animate-fade-in">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-white p-1">
-          <img src={bscLogoIcon} alt="BSC AI" className="w-full h-full object-contain" />
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+          <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white/90">
           {getGreeting()}
@@ -205,7 +204,7 @@ export const WelcomeScreen = ({ onSend, onOpenKnowledgeBase, disabled }: Welcome
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Ask BSC AI anything..."
+              placeholder="Ask AI Assistant anything..."
               rows={1}
               disabled={disabled || isRecording}
               className={cn(
@@ -216,7 +215,7 @@ export const WelcomeScreen = ({ onSend, onOpenKnowledgeBase, disabled }: Welcome
               )}
               style={{ minHeight: '56px', maxHeight: '200px' }}
             />
-            
+
             {/* Recording Indicator */}
             {isRecording && (
               <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-2 animate-pulse">
@@ -291,8 +290,8 @@ export const WelcomeScreen = ({ onSend, onOpenKnowledgeBase, disabled }: Welcome
                 size="icon"
                 className={cn(
                   "h-9 w-9 rounded-xl transition-all duration-300",
-                  isRecording 
-                    ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse" 
+                  isRecording
+                    ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse"
                     : "text-white/50 hover:text-white hover:bg-white/10"
                 )}
               >
@@ -337,10 +336,10 @@ export const WelcomeScreen = ({ onSend, onOpenKnowledgeBase, disabled }: Welcome
 
         {/* Footer */}
         <p className="text-center text-xs text-white/30 mt-8">
-          BSC AI may produce inaccurate information. Consider verifying important details.
+          AI Assistant may produce inaccurate information. Consider verifying important details.
         </p>
       </div>
-      
+
       <input
         ref={fileInputRef}
         type="file"

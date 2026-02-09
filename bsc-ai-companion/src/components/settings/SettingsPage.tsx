@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import bscLogo from '@/assets/bsc-logo.png';
 
 export const SettingsPage = () => {
   const { workspaces, activeWorkspaceId } = useAppStore();
@@ -15,7 +14,7 @@ export const SettingsPage = () => {
 
   const [profile, setProfile] = useState({
     name: 'Admin User',
-    email: 'admin@bsc.rw',
+    email: 'admin@ai-assistant.com',
   });
 
   const [notifications, setNotifications] = useState({
@@ -122,8 +121,8 @@ export const SettingsPage = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl overflow-hidden">
-                  <img src={bscLogo} alt="BSC" className="w-full h-full object-contain" />
+                <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                  <Building2 className="w-8 h-8" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">{activeWorkspace?.name}</h3>
@@ -207,7 +206,7 @@ export const SettingsPage = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-foreground">Production Key</p>
-                    <p className="text-sm text-muted-foreground font-mono">bsc_prod_••••••••••••</p>
+                    <p className="text-sm text-muted-foreground font-mono">api_prod_••••••••••••</p>
                   </div>
                   <Button variant="outline" size="sm">Reveal</Button>
                 </div>
@@ -216,7 +215,7 @@ export const SettingsPage = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-foreground">Development Key</p>
-                    <p className="text-sm text-muted-foreground font-mono">bsc_dev_••••••••••••</p>
+                    <p className="text-sm text-muted-foreground font-mono">api_dev_••••••••••••</p>
                   </div>
                   <Button variant="outline" size="sm">Reveal</Button>
                 </div>

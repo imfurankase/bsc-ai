@@ -10,6 +10,7 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useAppStore } from '@/store/appStore';
 import { useBufferedStreaming } from '@/hooks/useBufferedStreaming';
 import type { MessageAttachment } from '@/types';
+import type { ConversationSummary, ConversationDetail } from '@/types/api-types';
 
 type Message = {
   id: string;
@@ -19,7 +20,7 @@ type Message = {
 };
 
 type Conversation = {
-  id: string;
+  id: number;
   title: string;
   created_at: string;
   updated_at: string;
@@ -27,24 +28,23 @@ type Conversation = {
 
 export const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<(ConversationSummary | ConversationDetail)[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [kbPickerOpen, setKbPickerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   const { toggleSidebar, sidebarCollapsed, activeConversationId, setActiveConversation } = useAppStore();
 
-  const { 
-    streamChat, 
-    saveMessage, 
-    loadMessages, 
-    createConversation, 
+  const {
+    streamChat,
+    loadMessages,
+    createConversation,
     loadConversations,
     updateConversationTitle,
   } = useChat();
 
   const { uploadDocument, getDocumentContext } = useDocuments();
-  
+
   // Buffered streaming for smooth text display
   const { addChunk, complete, reset: resetBuffer, getFullContent } = useBufferedStreaming({
     minBufferSize: 10,    // Start displaying after just 10 chars
@@ -62,8 +62,8 @@ export const ChatInterface = () => {
     if (activeConversationId) {
       loadMessages(activeConversationId).then(dbMessages => {
         setMessages(dbMessages.map(m => ({
-          id: m.id,
-          role: m.role as 'user' | 'assistant',
+          id: String(m.id),
+          role: m.is_user_message ? 'user' : 'assistant',
           content: m.content,
         })));
       });
@@ -80,7 +80,7 @@ export const ChatInterface = () => {
     if (!input.trim() && (!attachments || attachments.length === 0)) return;
 
     let conversationId = activeConversationId;
-    
+
     // Create new conversation if needed
     if (!conversationId) {
       const title = input.trim().slice(0, 50) || 'New Chat';
@@ -108,9 +108,6 @@ export const ChatInterface = () => {
       attachments,
     };
     setMessages(prev => [...prev, userMessage]);
-    
-    // Save user message to DB
-    await saveMessage(conversationId, 'user', input);
 
     setIsTyping(true);
 
@@ -125,16 +122,16 @@ export const ChatInterface = () => {
 
     // Reset buffer for new message
     resetBuffer();
-    
+
     // Create placeholder for assistant message
     const assistantMessageId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, { id: assistantMessageId, role: 'assistant', content: '' }]);
 
     // Update function for buffered streaming
     const updateMessage = (content: string) => {
-      setMessages(prev => 
-        prev.map(m => 
-          m.id === assistantMessageId 
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantMessageId
             ? { ...m, content }
             : m
         )
@@ -142,38 +139,31 @@ export const ChatInterface = () => {
     };
 
     await streamChat({
-      messages: messageHistory,
+      message: input,
       conversationId,
-      documentContext: documentContext || undefined,
       onDelta: (chunk) => {
         addChunk(chunk, updateMessage);
       },
       onDone: async () => {
         // Complete the buffered display
         complete(updateMessage);
-        
+
         // Small delay to let buffer finish, then save
         setTimeout(async () => {
           setIsTyping(false);
-          const fullContent = getFullContent();
-          
-          // Save assistant message to DB
-          if (fullContent) {
-            await saveMessage(conversationId!, 'assistant', fullContent);
-          }
-          
+
           // Update conversation title if it's the first message
           if (messages.length === 0 && input.trim()) {
             const newTitle = input.slice(0, 50);
             await updateConversationTitle(conversationId!, newTitle);
-            setConversations(prev => 
+            setConversations(prev =>
               prev.map(c => c.id === conversationId ? { ...c, title: newTitle } : c)
             );
           }
         }, 200);
       },
     });
-  }, [activeConversationId, messages, createConversation, saveMessage, streamChat, getDocumentContext, uploadDocument, updateConversationTitle, resetBuffer, addChunk, complete, getFullContent]);
+  }, [activeConversationId, messages, createConversation, streamChat, getDocumentContext, uploadDocument, updateConversationTitle, resetBuffer, addChunk, complete, setActiveConversation]);
 
   const handleKBSelect = (attachments: MessageAttachment[]) => {
     // Handle KB selection
@@ -188,8 +178,8 @@ export const ChatInterface = () => {
   if (messages.length === 0) {
     return (
       <div className="flex flex-col h-full">
-        <WelcomeScreen 
-          onSend={handleSend} 
+        <WelcomeScreen
+          onSend={handleSend}
           onOpenKnowledgeBase={() => setKbPickerOpen(true)}
           disabled={isTyping}
         />
@@ -214,7 +204,7 @@ export const ChatInterface = () => {
           >
             <Menu className="w-5 h-5" />
           </button>
-          
+
           <div className="relative group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-xl sm:rounded-2xl blur-md opacity-40 group-hover:opacity-60 transition-opacity" />
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary via-primary to-secondary flex items-center justify-center shadow-lg">
@@ -231,7 +221,7 @@ export const ChatInterface = () => {
                 <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500" />
                 <span className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500 animate-ping" />
               </span>
-              <span className="hidden sm:inline">BSC AI Assistant • </span>Online
+              <span className="hidden sm:inline">AI Assistant • </span>Online
             </p>
           </div>
         </div>
@@ -245,7 +235,7 @@ export const ChatInterface = () => {
               key={message.id}
               message={{
                 id: message.id,
-                chatId: activeConversationId || '',
+                chatId: String(activeConversationId || ''),
                 role: message.role,
                 content: message.content,
                 attachments: message.attachments,
@@ -255,7 +245,7 @@ export const ChatInterface = () => {
               animationDelay={index * 30}
             />
           ))}
-          
+
           {/* Typing Indicator */}
           {isTyping && messages[messages.length - 1]?.role === 'user' && (
             <div className="flex gap-3 animate-fade-in">

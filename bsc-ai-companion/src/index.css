@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* BSC AI Design System */
+/* AI Assistant Design System */
 
 @layer base {
   :root {
@@ -17,7 +17,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 15%;
 
-    /* BSC Orange Primary */
+    /* Primary */
     --primary: 30 90% 50%; /* orange-ish */
     --primary-foreground: 0 0% 100%;
 
@@ -40,7 +40,7 @@
 
     --radius: 0.75rem;
 
-    /* BSC Sidebar - Dark slate */
+    /* Sidebar - Dark slate */
     --sidebar-background: 220 25% 12%;
     --sidebar-foreground: 220 10% 90%;
     --sidebar-primary: 30 90% 50%;
@@ -51,7 +51,7 @@
     --sidebar-ring: 30 90% 50%;
     --sidebar-muted: 220 15% 35%;
 
-    /* BSC Brand Gradient - Orange */
+    /* Brand Gradient - Orange */
     --gradient-primary: linear-gradient(
       135deg,
       hsl(30, 90%, 50%) 0%,

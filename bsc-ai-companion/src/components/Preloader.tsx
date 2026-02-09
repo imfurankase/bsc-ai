@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import bscLogo from '@/assets/bsc-logo-icon.png';
 
 interface PreloaderProps {
   onComplete: () => void;
@@ -41,18 +40,12 @@ export const Preloader = ({ onComplete, minDuration = 2000 }: PreloaderProps) =>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
       </div>
 
-      {/* Logo */}
-      <div className="relative mb-8">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-3xl blur-2xl opacity-50 animate-pulse" />
-        <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-primary via-primary to-secondary flex items-center justify-center shadow-2xl p-4">
-          <img src={bscLogo} alt="BSC AI" className="w-full h-full object-contain" />
-        </div>
-      </div>
+
 
       {/* Brand */}
       <h1 className="text-3xl font-bold mb-2">
         <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
-          BSC AI
+          AI Assistant
         </span>
       </h1>
       <p className="text-muted-foreground mb-8">Initializing your workspace...</p>

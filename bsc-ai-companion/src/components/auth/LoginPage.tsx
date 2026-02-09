@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import bscLogo from '@/assets/bsc-logo-icon.png';
 
 export const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -42,45 +41,17 @@ export const LoginPage = () => {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-white/10 rounded-full" />
         </div>
 
-        {/* Logo */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center p-2">
-            <img src={bscLogo} alt="BSC AI" className="w-full h-full object-contain" />
-          </div>
-          <span className="text-2xl font-bold text-white">BSC AI</span>
-        </div>
 
         {/* Hero content */}
         <div className="relative z-10 space-y-6">
           <h1 className="text-5xl font-bold text-white leading-tight">
-            Your AI-Powered
-            <br />
-            <span className="text-white/80">Knowledge Hub</span>
+            AI Assistant
           </h1>
-          <p className="text-xl text-white/70 max-w-md">
-            Build intelligent chatbots, manage knowledge bases, and transform how your team accesses information.
-          </p>
-
-          {/* Feature list */}
-          <div className="space-y-4 pt-4">
-            {[
-              'Smart conversations with context awareness',
-              'Upload documents and ask questions',
-              'Persistent chat history & memory',
-            ].map((feature, index) => (
-              <div key={index} className="flex items-center gap-3 text-white/80">
-                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                  <div className="w-2 h-2 rounded-full bg-white" />
-                </div>
-                {feature}
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Footer */}
         <p className="relative z-10 text-white/50 text-sm">
-          © 2026 BSC AI. All rights reserved.
+          © 2026 AI Assistant. All rights reserved.
         </p>
       </div>
 
@@ -89,10 +60,7 @@ export const LoginPage = () => {
         <div className="w-full max-w-md space-y-6 sm:space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center p-1.5 sm:p-2">
-              <img src={bscLogo} alt="BSC AI" className="w-full h-full object-contain" />
-            </div>
-            <span className="text-xl sm:text-2xl font-bold">BSC AI</span>
+            <span className="text-xl sm:text-2xl font-bold">AI Assistant</span>
           </div>
 
           {/* Header */}
@@ -102,7 +70,7 @@ export const LoginPage = () => {
             </h2>
             <p className="mt-2 text-sm sm:text-base text-muted-foreground">
               {isSignUp
-                ? 'Sign up to start using BSC AI'
+                ? 'Sign up to start using AI Assistant'
                 : 'Enter your credentials to access your workspace'}
             </p>
           </div>
