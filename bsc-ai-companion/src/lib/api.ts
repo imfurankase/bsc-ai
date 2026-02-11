@@ -138,7 +138,8 @@ export const streamRequest = async (
   onChunk: (chunk: string) => void,
   onDone: (conversationId?: number) => void,
   onError: (error: string) => void,
-  onChartData?: (chartData: any) => void
+  onChartData?: (chartData: any) => void,
+  signal?: AbortSignal
 ): Promise<void> => {
   const accessToken = getAccessToken();
 
@@ -149,6 +150,7 @@ export const streamRequest = async (
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {

@@ -47,6 +47,7 @@ export const ChatInterface = () => {
 
   const {
     streamChat,
+    cancelStream,
     loadConversation,
     loadConversations,
     isLoading: chatLoading,
@@ -211,6 +212,7 @@ export const ChatInterface = () => {
       resetBuffer,
       addChunk,
       complete,
+      cancelStream,
       setActiveConversation,
       loadConversations,
     ]
@@ -338,12 +340,27 @@ export const ChatInterface = () => {
       </div>
 
       {/* Input Area */}
-      <ChatInput
-        onSend={handleSend}
-        onOpenKnowledgeBase={() => setKbPickerOpen(true)}
-        disabled={isTyping}
-        darkMode
-      />
+      <div className="relative">
+        {isTyping && (
+          <div className="absolute -top-9 right-4 z-10">
+            <button
+              onClick={() => {
+                cancelStream();
+                setIsTyping(false);
+              }}
+              className="px-3 py-1.5 rounded-full text-xs font-medium bg-red-500/90 text-white shadow hover:bg-red-500 transition-colors"
+            >
+              Stop generating
+            </button>
+          </div>
+        )}
+        <ChatInput
+          onSend={handleSend}
+          onOpenKnowledgeBase={() => setKbPickerOpen(true)}
+          disabled={isTyping}
+          darkMode
+        />
+      </div>
 
       {/* Knowledge Base Picker */}
       <KnowledgeBasePickerDialog

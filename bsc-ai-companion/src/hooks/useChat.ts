@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { api, streamRequest } from "@/lib/api";
 import type {
@@ -12,6 +12,7 @@ import type {
 
 export const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
    * Stream chat messages from Django API
@@ -34,6 +35,13 @@ export const useChat = () => {
         onChartData,
       } = params;
       setIsLoading(true);
+
+      // Cancel any previous stream before starting a new one
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       const endpoint = conversationId
         ? `/api/chat/send/${conversationId}/`
@@ -62,11 +70,23 @@ export const useChat = () => {
           if (onChartData && data) {
             onChartData(data as ChartData);
           }
-        }
+        },
+        controller.signal
       );
     },
     []
   );
+  /**
+   * Cancel an in-flight streaming request (if any).
+   * This stops frontend updates and attempts to abort the underlying fetch.
+   */
+  const cancelStream = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+  }, []);
 
   /**
    * Load all conversations for the current user
@@ -188,6 +208,7 @@ export const useChat = () => {
   return {
     isLoading,
     streamChat,
+    cancelStream,
     loadConversations,
     loadConversation,
     loadMessages,
