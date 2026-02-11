@@ -87,7 +87,8 @@ class DocumentUploadSerializer(serializers.Serializer):
     conversation_id = serializers.IntegerField(required=False, allow_null=True)
     
     # Supported file types
-    ALLOWED_DOCUMENTS = ['pdf', 'docx', 'txt']
+    # Note: also supports tabular formats (csv, xlsx, xls) for spreadsheet handling
+    ALLOWED_DOCUMENTS = ['pdf', 'docx', 'txt', 'csv', 'xlsx', 'xls']
     ALLOWED_IMAGES = ['jpg', 'jpeg', 'png', 'gif', 'webp']
     
     def validate_document(self, value):
@@ -99,7 +100,8 @@ class DocumentUploadSerializer(serializers.Serializer):
         
         if file_type not in all_allowed:
             raise serializers.ValidationError(
-                f"Unsupported file type. Please upload PDF, DOCX, TXT, or image files (JPG, PNG, GIF, WebP)."
+                "Unsupported file type. Please upload PDF, DOCX, TXT, CSV, Excel files (XLSX/XLS), "
+                "or image files (JPG, PNG, GIF, WebP)."
             )
         
         # Check file size (10MB for docs, 20MB for images)

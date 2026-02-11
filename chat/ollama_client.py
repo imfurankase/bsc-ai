@@ -98,3 +98,88 @@ def get_ai_response(messages, context=None):
     for chunk in get_ai_response_stream(messages, context):
         full_response += chunk
     return full_response
+
+
+def _ollama_chat(messages, stream: bool, options: dict, timeout: int = 120) -> dict:
+    """
+    Low-level helper to call Ollama /api/chat.
+    When stream=False, returns the parsed JSON response.
+    """
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    response = requests.post(
+        f"{base_url}/api/chat",
+        json={
+            "model": "llama3.3:70b",
+            "messages": messages,
+            "stream": stream,
+            "keep_alive": "10m",
+            "options": options,
+        },
+        stream=stream,
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def get_web_tool_call(user_message: str) -> dict:
+    """
+    Ask the model to decide which Tavily tool (if any) to run.
+
+    Returns a dict with shape:
+      {"tool": "none"} OR {"tool": "tavily.search"|"tavily.extract"|"tavily.crawl"|"tavily.map"|"tavily.research", "args": {...}}
+    """
+    routing_system = (
+        "You are a tool router. You decide whether to call Tavily web tools.\n"
+        "You MUST output only valid JSON (no markdown, no explanation).\n\n"
+        "Available tools:\n"
+        "- tavily.search: {query, search_depth, topic, time_range, max_results, auto_parameters, include_answer, include_raw_content}\n"
+        "- tavily.extract: {urls, extract_depth, format, query, chunks_per_source}\n"
+        "- tavily.crawl: {url, instructions, max_depth, max_breadth, limit, allow_external, extract_depth, format, chunks_per_source}\n"
+        "- tavily.map: {url, max_depth, max_breadth, limit}\n"
+        "- tavily.research: {query}\n\n"
+        "Rules:\n"
+        "- If the user message contains a URL or domain and asks to get latest info from that site, prefer tavily.crawl.\n"
+        "- If it's a single page URL to read, prefer tavily.extract.\n"
+        "- If it's asking for a sitemap/list of pages, use tavily.map.\n"
+        "- If it is time-sensitive news/current events, use tavily.search with topic='news' and time_range='day' or 'week'.\n"
+        "- If web is NOT needed, return {\"tool\":\"none\"}.\n\n"
+        "Safety constraints (you must respect):\n"
+        "- max_results <= 8\n"
+        "- crawl: max_depth <= 2, max_breadth <= 25, limit <= 30, allow_external=false\n"
+        "- include_raw_content should be 'markdown' when searching/extracting\n"
+    )
+
+    messages = [
+        {"role": "system", "content": routing_system},
+        {"role": "user", "content": user_message},
+    ]
+
+    try:
+        data = _ollama_chat(
+            messages=messages,
+            stream=False,
+            options={
+                "temperature": 0.0,
+                "top_p": 0.9,
+                "num_predict": 512,
+                "num_ctx": 4096,
+            },
+            timeout=60,
+        )
+        content = (data.get("message") or {}).get("content") or ""
+
+        # The router is instructed to return pure JSON; still be defensive.
+        content = content.strip()
+        if content.startswith("```"):
+            content = content.strip("`").strip()
+
+        tool_call = json.loads(content) if content else {"tool": "none"}
+        if not isinstance(tool_call, dict):
+            return {"tool": "none"}
+        if "tool" not in tool_call:
+            return {"tool": "none"}
+        return tool_call
+    except Exception as e:
+        print(f"[WARN] Web tool routing failed: {e}")
+        return {"tool": "none"}

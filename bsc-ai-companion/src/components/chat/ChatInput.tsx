@@ -1,7 +1,19 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Paperclip, Mic, MicOff, X, FileText, Image, Link2, Database, Plus, StopCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  Send,
+  Paperclip,
+  Mic,
+  MicOff,
+  X,
+  FileText,
+  Image,
+  Link2,
+  Database,
+  Plus,
+  StopCircle,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,9 +21,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
-import type { MessageAttachment } from '@/types';
-import type { SpeechRecognition } from '@/types/speech';
+} from "@/components/ui/dropdown-menu";
+import type { MessageAttachment } from "@/types";
+import type { SpeechRecognition } from "@/types/speech";
 
 interface ChatInputProps {
   onSend: (message: string, attachments?: MessageAttachment[]) => void;
@@ -21,8 +33,14 @@ interface ChatInputProps {
   darkMode?: boolean;
 }
 
-export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, darkMode }: ChatInputProps) => {
-  const [input, setInput] = useState('');
+export const ChatInput = ({
+  onSend,
+  onOpenKnowledgeBase,
+  disabled,
+  placeholder,
+  darkMode,
+}: ChatInputProps) => {
+  const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
@@ -33,7 +51,7 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
   useEffect(() => {
     if (isRecording) {
       recordingInterval.current = setInterval(() => {
-        setRecordingTime(t => t + 1);
+        setRecordingTime((t) => t + 1);
       }, 1000);
     } else {
       if (recordingInterval.current) {
@@ -49,12 +67,12 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
   const handleSend = () => {
     if (!input.trim() && attachments.length === 0) return;
     onSend(input, attachments.length > 0 ? attachments : undefined);
-    setInput('');
+    setInput("");
     setAttachments([]);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -71,32 +89,33 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
       setIsRecording(false);
     } else {
       // Start recording
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         alert("Your browser doesn't support speech recognition.");
         return;
       }
 
       const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
+      recognition.lang = "en-US";
       recognition.continuous = true;
       recognition.interimResults = true;
 
       recognition.onresult = (event: any) => {
-        let transcript = '';
+        let transcript = "";
         const results = event.results;
         for (let i = event.resultIndex; i < results.length; i++) {
           transcript += results[i][0].transcript;
         }
         // Append to existing input if it's the start
-        setInput(prev => {
+        setInput((prev) => {
           // Basic logic to append; for production might need smarter cursor handling
-          return prev ? prev + ' ' + transcript : transcript;
+          return prev ? prev + " " + transcript : transcript;
         });
       };
 
       recognition.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
+        console.error("Speech recognition error", event.error);
         setIsRecording(false);
       };
 
@@ -114,58 +133,73 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
     const files = e.target.files;
     if (!files) return;
 
-    const newAttachments: MessageAttachment[] = Array.from(files).map(file => ({
-      id: Date.now().toString() + Math.random(),
-      name: file.name,
-      type: file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'doc',
-      size: file.size,
-      source: 'upload' as const,
-      file: file,
-    }));
+    const newAttachments: MessageAttachment[] = Array.from(files).map(
+      (file) => ({
+        id: Date.now().toString() + Math.random(),
+        name: file.name,
+        type: file.type.includes("pdf")
+          ? "pdf"
+          : file.type.includes("image")
+          ? "image"
+          : "doc",
+        size: file.size,
+        source: "upload" as const,
+        file: file,
+      })
+    );
 
-    setAttachments(prev => [...prev, ...newAttachments]);
-    e.target.value = '';
+    setAttachments((prev) => [...prev, ...newAttachments]);
+    e.target.value = "";
   };
 
   const addUrlAttachment = () => {
-    const url = prompt('Enter URL:');
+    const url = prompt("Enter URL:");
     if (url) {
-      setAttachments(prev => [...prev, {
-        id: Date.now().toString(),
-        name: new URL(url).hostname,
-        type: 'url',
-        source: 'url',
-        url,
-      }]);
+      setAttachments((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          name: new URL(url).hostname,
+          type: "url",
+          source: "url",
+          url,
+        },
+      ]);
     }
   };
 
   const removeAttachment = (id: string) => {
-    setAttachments(prev => prev.filter(a => a.id !== id));
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const getAttachmentIcon = (type: MessageAttachment['type']) => {
+  const getAttachmentIcon = (type: MessageAttachment["type"]) => {
     switch (type) {
-      case 'pdf': return <FileText className="w-3.5 h-3.5" />;
-      case 'image': return <Image className="w-3.5 h-3.5" />;
-      case 'url': return <Link2 className="w-3.5 h-3.5" />;
-      default: return <FileText className="w-3.5 h-3.5" />;
+      case "pdf":
+        return <FileText className="w-3.5 h-3.5" />;
+      case "image":
+        return <Image className="w-3.5 h-3.5" />;
+      case "url":
+        return <Link2 className="w-3.5 h-3.5" />;
+      default:
+        return <FileText className="w-3.5 h-3.5" />;
     }
   };
 
   return (
-    <div className={cn(
-      "p-2 sm:p-4 border-t backdrop-blur-xl",
-      darkMode
-        ? "border-white/10 bg-[hsl(220,20%,12%)]"
-        : "border-border/50 bg-gradient-to-t from-card via-card to-transparent"
-    )}>
+    <div
+      className={cn(
+        "p-2 sm:p-4 border-t backdrop-blur-xl",
+        darkMode
+          ? "border-white/10 bg-[hsl(220,20%,12%)]"
+          : "border-border/50 bg-gradient-to-t from-card via-card to-transparent"
+      )}
+    >
       <div className="max-w-4xl mx-auto space-y-2 sm:space-y-3">
         {/* Attachments Preview */}
         {attachments.length > 0 && (
@@ -184,17 +218,21 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
                   {getAttachmentIcon(attachment.type)}
                 </div>
                 <div className="flex flex-col">
-                  <span className={cn(
-                    "text-xs font-medium truncate max-w-[120px]",
-                    darkMode ? "text-white/80" : "text-foreground"
-                  )}>
+                  <span
+                    className={cn(
+                      "text-xs font-medium truncate max-w-[120px]",
+                      darkMode ? "text-white/80" : "text-foreground"
+                    )}
+                  >
                     {attachment.name}
                   </span>
                   {attachment.size && (
-                    <span className={cn(
-                      "text-[10px]",
-                      darkMode ? "text-white/40" : "text-muted-foreground"
-                    )}>
+                    <span
+                      className={cn(
+                        "text-[10px]",
+                        darkMode ? "text-white/40" : "text-muted-foreground"
+                      )}
+                    >
                       {(attachment.size / 1024).toFixed(1)} KB
                     </span>
                   )}
@@ -228,43 +266,100 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
                   darkMode
                     ? "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 text-white/50 hover:text-white"
                     : "border-border/50 bg-muted/30 hover:bg-muted hover:border-primary/30",
-                  attachments.length > 0 && (darkMode ? "border-primary/50 bg-primary/10" : "border-primary/50 bg-primary/5")
+                  attachments.length > 0 &&
+                    (darkMode
+                      ? "border-primary/50 bg-primary/10"
+                      : "border-primary/50 bg-primary/5")
                 )}
               >
                 <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className={cn(
-              "w-56 rounded-xl",
-              darkMode && "bg-[hsl(220,20%,18%)] border-white/10"
-            )}>
-              <DropdownMenuLabel className={cn("text-xs", darkMode ? "text-white/50" : "text-muted-foreground")}>Add to message</DropdownMenuLabel>
-              <DropdownMenuSeparator className={darkMode ? "bg-white/10" : ""} />
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className={cn("gap-3 py-2.5", darkMode && "text-white/80 hover:text-white focus:text-white focus:bg-white/10")}>
+            <DropdownMenuContent
+              align="start"
+              className={cn(
+                "w-56 rounded-xl",
+                darkMode && "bg-[hsl(220,20%,18%)] border-white/10"
+              )}
+            >
+              <DropdownMenuLabel
+                className={cn(
+                  "text-xs",
+                  darkMode ? "text-white/50" : "text-muted-foreground"
+                )}
+              >
+                Add to message
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator
+                className={darkMode ? "bg-white/10" : ""}
+              />
+              <DropdownMenuItem
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "gap-3 py-2.5",
+                  darkMode &&
+                    "text-white/80 hover:text-white focus:text-white focus:bg-white/10"
+                )}
+              >
                 <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
                   <Paperclip className="w-4 h-4 text-blue-500" />
                 </div>
                 <div>
                   <div className="font-medium">Upload File</div>
-                  <div className={cn("text-xs", darkMode ? "text-white/40" : "text-muted-foreground")}>PDF, DOC, TXT, Images</div>
+                  <div
+                    className={cn(
+                      "text-xs",
+                      darkMode ? "text-white/40" : "text-muted-foreground"
+                    )}
+                  >
+                    PDF, DOC, TXT, Images
+                  </div>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onOpenKnowledgeBase} className={cn("gap-3 py-2.5", darkMode && "text-white/80 hover:text-white focus:text-white focus:bg-white/10")}>
+              <DropdownMenuItem
+                onClick={onOpenKnowledgeBase}
+                className={cn(
+                  "gap-3 py-2.5",
+                  darkMode &&
+                    "text-white/80 hover:text-white focus:text-white focus:bg-white/10"
+                )}
+              >
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Database className="w-4 h-4 text-primary" />
                 </div>
                 <div>
                   <div className="font-medium">Knowledge Base</div>
-                  <div className={cn("text-xs", darkMode ? "text-white/40" : "text-muted-foreground")}>Select from your docs</div>
+                  <div
+                    className={cn(
+                      "text-xs",
+                      darkMode ? "text-white/40" : "text-muted-foreground"
+                    )}
+                  >
+                    Select from your docs
+                  </div>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={addUrlAttachment} className={cn("gap-3 py-2.5", darkMode && "text-white/80 hover:text-white focus:text-white focus:bg-white/10")}>
+              <DropdownMenuItem
+                onClick={addUrlAttachment}
+                className={cn(
+                  "gap-3 py-2.5",
+                  darkMode &&
+                    "text-white/80 hover:text-white focus:text-white focus:bg-white/10"
+                )}
+              >
                 <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
                   <Link2 className="w-4 h-4 text-violet-500" />
                 </div>
                 <div>
                   <div className="font-medium">Add URL</div>
-                  <div className={cn("text-xs", darkMode ? "text-white/40" : "text-muted-foreground")}>Link external content</div>
+                  <div
+                    className={cn(
+                      "text-xs",
+                      darkMode ? "text-white/40" : "text-muted-foreground"
+                    )}
+                  >
+                    Link external content
+                  </div>
                 </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -289,16 +384,31 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
                 darkMode
                   ? "border-white/10 bg-white/5 text-white placeholder:text-white/40"
                   : "border-border/50 bg-background/80 text-foreground placeholder:text-muted-foreground",
-                isRecording && (darkMode ? "border-red-500/50 bg-red-500/10" : "border-destructive/50 bg-destructive/5")
+                isRecording &&
+                  (darkMode
+                    ? "border-red-500/50 bg-red-500/10"
+                    : "border-destructive/50 bg-destructive/5")
               )}
-              style={{ minHeight: '44px', maxHeight: '200px' }}
+              style={{ minHeight: "44px", maxHeight: "200px" }}
             />
 
             {/* Recording Indicator */}
             {isRecording && (
               <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-2 animate-pulse">
-                <span className={cn("w-2.5 h-2.5 rounded-full animate-pulse", darkMode ? "bg-red-500" : "bg-destructive")} />
-                <span className={cn("text-sm font-medium", darkMode ? "text-red-400" : "text-destructive")}>{formatTime(recordingTime)}</span>
+                <span
+                  className={cn(
+                    "w-2.5 h-2.5 rounded-full animate-pulse",
+                    darkMode ? "bg-red-500" : "bg-destructive"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-sm font-medium",
+                    darkMode ? "text-red-400" : "text-destructive"
+                  )}
+                >
+                  {formatTime(recordingTime)}
+                </span>
               </div>
             )}
           </div>
@@ -311,8 +421,12 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
             className={cn(
               "hidden sm:flex h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl border transition-all duration-300 flex-shrink-0",
               isRecording
-                ? (darkMode ? "border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse" : "border-destructive bg-destructive hover:bg-destructive/90 animate-pulse")
-                : (darkMode ? "border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white" : "border-border/50 bg-muted/30 hover:bg-muted hover:border-primary/30")
+                ? darkMode
+                  ? "border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse"
+                  : "border-destructive bg-destructive hover:bg-destructive/90 animate-pulse"
+                : darkMode
+                ? "border-white/10 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white"
+                : "border-border/50 bg-muted/30 hover:bg-muted hover:border-primary/30"
             )}
           >
             {isRecording ? (
@@ -338,7 +452,12 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
         </div>
 
         {/* Footer */}
-        <p className={cn("text-center text-[10px] sm:text-xs", darkMode ? "text-white/30" : "text-muted-foreground")}>
+        <p
+          className={cn(
+            "text-center text-[10px] sm:text-xs",
+            darkMode ? "text-white/30" : "text-muted-foreground"
+          )}
+        >
           AI Assistant may produce inaccurate information.
         </p>
       </div>
@@ -347,7 +466,7 @@ export const ChatInput = ({ onSend, onOpenKnowledgeBase, disabled, placeholder, 
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.doc,.docx,.txt,.md,.png,.jpg,.jpeg,.gif"
+        accept=".pdf,.doc,.docx,.txt,.md,.png,.jpg,.jpeg,.gif,.csv,.xlsx,.xls"
         onChange={handleFileSelect}
         className="hidden"
       />

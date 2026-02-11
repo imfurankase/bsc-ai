@@ -20,6 +20,7 @@ from .api_views import (
     DocumentDetailView,
     DocumentStatusView,
     LinkDocumentView,
+    DocumentTablePreviewView,
     # Utility
     HealthCheckView,
 )
@@ -84,6 +85,9 @@ urlpatterns = [
     
     # GET /api/documents/<id>/status/ - Check processing status
     path('documents/<int:document_id>/status/', DocumentStatusView.as_view(), name='document_status'),
+    
+    # GET /api/documents/<id>/table/ - Get tabular preview (CSV/Excel)
+    path('documents/<int:document_id>/table/', DocumentTablePreviewView.as_view(), name='document_table_preview'),
     
     # POST /api/documents/link/ - Link document to conversation
     path('documents/link/', LinkDocumentView.as_view(), name='document_link'),

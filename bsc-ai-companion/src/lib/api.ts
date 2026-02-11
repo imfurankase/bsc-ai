@@ -1,14 +1,14 @@
 /**
  * Django API Client
- * 
+ *
  * Handles JWT authentication, token refresh, and API requests.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // Token storage keys
-const ACCESS_TOKEN_KEY = 'bsc_access_token';
-const REFRESH_TOKEN_KEY = 'bsc_refresh_token';
+const ACCESS_TOKEN_KEY = "bsc_access_token";
+const REFRESH_TOKEN_KEY = "bsc_refresh_token";
 
 // Token management
 export const getAccessToken = (): string | null => {
@@ -41,9 +41,9 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/auth/refresh/`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ refresh: refreshToken }),
     });
@@ -76,11 +76,11 @@ export const apiRequest = async <T>(
 
     // Only set Content-Type for non-FormData requests
     if (!(options.body instanceof FormData)) {
-      (headers as Record<string, string>)['Content-Type'] = 'application/json';
+      (headers as Record<string, string>)["Content-Type"] = "application/json";
     }
 
     if (token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
     }
 
     return fetch(`${API_BASE_URL}${endpoint}`, {
@@ -102,7 +102,7 @@ export const apiRequest = async <T>(
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     return {
-      error: errorData.detail || errorData.message || 'Request failed',
+      error: errorData.detail || errorData.message || "Request failed",
       status: response.status,
     };
   }
@@ -113,21 +113,22 @@ export const apiRequest = async <T>(
 
 // Convenience methods
 export const api = {
-  get: <T>(endpoint: string) => apiRequest<T>(endpoint, { method: 'GET' }),
+  get: <T>(endpoint: string) => apiRequest<T>(endpoint, { method: "GET" }),
 
   post: <T>(endpoint: string, body?: unknown) =>
     apiRequest<T>(endpoint, {
-      method: 'POST',
+      method: "POST",
       body: body instanceof FormData ? body : JSON.stringify(body),
     }),
 
   patch: <T>(endpoint: string, body: unknown) =>
     apiRequest<T>(endpoint, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(body),
     }),
 
-  delete: <T>(endpoint: string) => apiRequest<T>(endpoint, { method: 'DELETE' }),
+  delete: <T>(endpoint: string) =>
+    apiRequest<T>(endpoint, { method: "DELETE" }),
 };
 
 // SSE streaming helper for chat
@@ -136,14 +137,15 @@ export const streamRequest = async (
   body: unknown,
   onChunk: (chunk: string) => void,
   onDone: (conversationId?: number) => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
+  onChartData?: (chartData: any) => void
 ): Promise<void> => {
   const accessToken = getAccessToken();
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
     body: JSON.stringify(body),
@@ -151,18 +153,18 @@ export const streamRequest = async (
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    onError(errorData.detail || errorData.error || 'Stream request failed');
+    onError(errorData.detail || errorData.error || "Stream request failed");
     return;
   }
 
   if (!response.body) {
-    onError('No response body');
+    onError("No response body");
     return;
   }
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = '';
+  let buffer = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -171,11 +173,11 @@ export const streamRequest = async (
     buffer += decoder.decode(value, { stream: true });
 
     // Process complete lines
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
 
     for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
+      if (!line.startsWith("data: ")) continue;
 
       const jsonStr = line.slice(6).trim();
       if (!jsonStr) continue;
@@ -185,6 +187,10 @@ export const streamRequest = async (
 
         if (data.chunk) {
           onChunk(data.chunk);
+        }
+
+        if (data.chart_data && onChartData) {
+          onChartData(data.chart_data);
         }
 
         if (data.done) {
@@ -203,7 +209,7 @@ export const streamRequest = async (
   }
 
   // Process any remaining buffer
-  if (buffer.startsWith('data: ')) {
+  if (buffer.startsWith("data: ")) {
     try {
       const data = JSON.parse(buffer.slice(6).trim());
       if (data.done) {

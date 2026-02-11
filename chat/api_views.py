@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404
 import json
 import re
@@ -22,9 +22,9 @@ from .serializers import (
     UserSerializer,
     UserRegistrationSerializer,
 )
-from .ollama_client import get_ai_response_stream
-from .document_service import process_document, search_documents
-from .web_search import get_web_context
+from .ollama_client import get_ai_response_stream, get_web_tool_call
+from .document_service import process_document, search_documents, get_tabular_preview, build_default_chart_from_preview
+from .web_search import get_web_context, execute_web_tool_call
 
 # Import tools if you have them
 try:
@@ -208,7 +208,7 @@ class SendMessageView(APIView):
         
         # === STEP 1: Check for tool use ===
         print(f"[DEBUG] Checking tool context for message: '{message_text}'")
-        tool_context = self._get_tool_context(message_text)
+        tool_context = self._get_tool_context(request.user, message_text)
         print(f"[DEBUG] Tool context result: {tool_context[:100] if tool_context else 'None'}...")
         
         # === STEP 2: Get document context (RAG) ===
@@ -222,7 +222,29 @@ class SendMessageView(APIView):
         # === STEP 4: Build chat history ===
         messages = self._build_chat_history(conversation, message_text, tool_context=tool_context, doc_context=doc_context)
         
-        # === STEP 5: Stream response ===
+        # === STEP 5: Prepare any tabular chart data (for document chats) ===
+        chart_data = None
+        if chat_type == 'document' or conversation.chat_type == 'document':
+            try:
+                # Use the first attached tabular document for a default chart
+                tabular_attachment = ChatAttachment.objects.filter(
+                    conversation=conversation,
+                    document__processed=True,
+                    document__file_type__in=('csv', 'xlsx', 'xls'),
+                ).select_related('document').first()
+
+                if tabular_attachment:
+                    preview = get_tabular_preview(tabular_attachment.document, max_rows=100)
+                    chart_data = build_default_chart_from_preview(preview)
+                    if chart_data:
+                        chart_data['title'] = tabular_attachment.document.title
+                        chart_data['document_id'] = tabular_attachment.document.id
+            except Exception as e:
+                # Chart data is optional; log and continue silently on failure
+                print(f"[WARN] Failed to build chart data: {e}")
+                chart_data = None
+
+        # === STEP 6: Stream response ===
         def event_stream():
             full_response = ""
             try:
@@ -237,6 +259,10 @@ class SendMessageView(APIView):
                     is_user_message=False,
                     content=full_response
                 )
+
+                # Optionally send chart data for the client to render
+                if chart_data:
+                    yield f"data: {json.dumps({'chart_data': chart_data})}\n\n"
                 
                 yield f"data: {json.dumps({'done': True, 'conversation_id': conversation.id})}\n\n"
             
@@ -275,7 +301,7 @@ class SendMessageView(APIView):
         
         return title if title else 'New Chat'
     
-    def _get_tool_context(self, message_text):
+    def _get_tool_context(self, user, message_text):
         """Check for tool use (weather/stock/web search)"""
         tool_context = ""
         lower_msg = message_text.lower()
@@ -292,34 +318,19 @@ class SendMessageView(APIView):
             if tickers:
                 tool_context = get_stock_price(tickers[0]) or ""
         
-        # Web search detection - expanded keywords for time-sensitive and factual queries
+        # Web context: model-routed Tavily tool calls (Option B)
         else:
-            search_triggers = [
-                # Direct search requests
-                'search', 'look up', 'find out', 'google', 'browse',
-                # Time-sensitive keywords
-                'latest', 'recent', 'current', 'today', 'yesterday', 'this week', 'this month', 'this year',
-                '2024', '2025', '2026', '2027',
-                # News and events
-                'news', 'what is happening', 'what happened', 'update',
-                # Sports and competitions
-                'winner', 'won', 'champion', 'championship', 'cup', 'tournament', 'match', 'score',
-                'afcon', 'world cup', 'premier league', 'champions league',
-                # Current facts queries
-                'who is the', 'what is the current', 'how much is', 'price of',
-                # People in current roles
-                'president of', 'ceo of', 'prime minister',
-            ]
-            
-            matched_triggers = [t for t in search_triggers if t in lower_msg]
-            print(f"[DEBUG] Web search check - Message: '{lower_msg}', Matched triggers: {matched_triggers}")
-            
-            if matched_triggers:
-                print(f"[DEBUG] Triggering web search for: {message_text}")
-                web_context = get_web_context(message_text)
-                print(f"[DEBUG] Web context returned: {web_context[:200] if web_context else 'None'}...")
-                if web_context:
-                    tool_context = f"[Web Search Results - Use this data to answer]:\n{web_context}"
+            # Always run the router; it returns {"tool":"none"} when web is not needed.
+            tool_call = get_web_tool_call(message_text)
+            web_context = execute_web_tool_call(tool_call, original_query=message_text, user_id=user.id)
+
+            # Optional fallback: if the router decided "none" but a user pasted a URL,
+            # use the heuristic Tavily context builder.
+            if not web_context and ("http://" in lower_msg or "https://" in lower_msg or "www." in lower_msg):
+                web_context = get_web_context(message_text, user_id=user.id)
+
+            if web_context:
+                tool_context = f"[Web Search Results - Use this data to answer]:\n{web_context}"
         
         return tool_context
     
@@ -536,6 +547,44 @@ class DocumentStatusView(APIView):
             'document_id': document.id,
             'title': document.title,
             'processed': document.processed
+        })
+
+
+class DocumentTablePreviewView(APIView):
+    """
+    GET /api/documents/<id>/table/  - Get a lightweight preview of a CSV/Excel document
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, document_id):
+        document = get_object_or_404(
+            Document, id=document_id, user=request.user
+        )
+        
+        if document.file_type not in ('csv', 'xlsx', 'xls'):
+            return Response({
+                'success': False,
+                'error': 'This document is not a supported tabular type (CSV/XLSX/XLS).'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            preview = get_tabular_preview(document)
+        except ValueError as e:
+            return Response({
+                'success': False,
+                'error': str(e),
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': f'Failed to load table preview: {e}',
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response({
+            'success': True,
+            'document_id': document.id,
+            'title': document.title,
+            'table': preview,
         })
 
 

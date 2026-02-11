@@ -3,13 +3,13 @@ from django.contrib.auth.decorators import login_required
 from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from .models import Conversation, ChatMessage, Document, DocumentChunk, ChatAttachment 
-from .ollama_client import get_ai_response_stream
+from .ollama_client import get_ai_response_stream, get_web_tool_call
 from .document_service import process_document, search_documents
 import json
 import time
 import re
 from .tools import get_weather, get_stock_price
-from .web_search import get_web_context
+from .web_search import get_web_context, execute_web_tool_call
 
 @login_required
 def chat_view(request, conversation_id=None):
@@ -102,9 +102,14 @@ def send_message(request, conversation_id=None):
             tool_context = get_stock_price(tickers[0])
 
 
-    # Web search detection - trigger on specific keywords
-    elif any(keyword in lower_msg for keyword in ['search', 'latest', 'recent', 'news', 'current', 'today', 'what is happening', 'browse']):
-        web_context = get_web_context(message_text)
+    # Web context: model-routed Tavily tool calls (Option B)
+    else:
+        tool_call = get_web_tool_call(message_text)
+        web_context = execute_web_tool_call(tool_call, original_query=message_text, user_id=request.user.id)
+
+        if not web_context and ("http://" in lower_msg or "https://" in lower_msg or "www." in lower_msg):
+            web_context = get_web_context(message_text, user_id=request.user.id)
+
         if web_context:
             tool_context = f"[Web Search]: {web_context}"
 
