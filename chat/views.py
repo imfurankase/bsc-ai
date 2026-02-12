@@ -102,16 +102,43 @@ def send_message(request, conversation_id=None):
             tool_context = get_stock_price(tickers[0])
 
 
-    # Web context: model-routed Tavily tool calls (Option B)
+    # Web context: gated model-routed Tavily tool calls
     else:
-        tool_call = get_web_tool_call(message_text)
-        web_context = execute_web_tool_call(tool_call, original_query=message_text, user_id=request.user.id)
+        if any(
+            keyword in lower_msg
+            for keyword in [
+                "search",
+                "latest",
+                "recent",
+                "news",
+                "current",
+                "today",
+                "what is happening",
+                "browse",
+                "go to",
+                "visit",
+                "open",
+                "website",
+                "http://",
+                "https://",
+                "www.",
+            ]
+        ):
+            tool_call = get_web_tool_call(message_text)
+            web_context = execute_web_tool_call(
+                tool_call, original_query=message_text, user_id=request.user.id
+            )
 
-        if not web_context and ("http://" in lower_msg or "https://" in lower_msg or "www." in lower_msg):
-            web_context = get_web_context(message_text, user_id=request.user.id)
+            if (
+                not web_context
+                and "http://" in lower_msg
+                or "https://" in lower_msg
+                or "www." in lower_msg
+            ):
+                web_context = get_web_context(message_text, user_id=request.user.id)
 
-        if web_context:
-            tool_context = f"[Web Search]: {web_context}"
+            if web_context:
+                tool_context = f"[Web Search]: {web_context}"
 
 
     # === STEP 2: Get document context (RAG) ===

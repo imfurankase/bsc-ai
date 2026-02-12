@@ -318,19 +318,67 @@ class SendMessageView(APIView):
             if tickers:
                 tool_context = get_stock_price(tickers[0]) or ""
         
-        # Web context: model-routed Tavily tool calls (Option B)
+        # Web context: gated model-routed Tavily tool calls
         else:
-            # Always run the router; it returns {"tool":"none"} when web is not needed.
-            tool_call = get_web_tool_call(message_text)
-            web_context = execute_web_tool_call(tool_call, original_query=message_text, user_id=user.id)
+            search_triggers = [
+                # Direct search requests
+                "search",
+                "look up",
+                "find out",
+                "google",
+                "browse",
+                # Site navigation / explicit browsing
+                "go to",
+                "visit",
+                "open",
+                "website",
+                "link",
+                # URL patterns
+                "http://",
+                "https://",
+                "www.",
+                # Time-sensitive keywords
+                "latest",
+                "recent",
+                "current",
+                "today",
+                "yesterday",
+                "this week",
+                "this month",
+                "this year",
+                # News and events
+                "news",
+                "what is happening",
+                "what happened",
+                "update",
+            ]
 
-            # Optional fallback: if the router decided "none" but a user pasted a URL,
-            # use the heuristic Tavily context builder.
-            if not web_context and ("http://" in lower_msg or "https://" in lower_msg or "www." in lower_msg):
-                web_context = get_web_context(message_text, user_id=user.id)
+            matched_triggers = [t for t in search_triggers if t in lower_msg]
+            print(
+                f"[DEBUG] Web search check - Message: '{lower_msg}', Matched triggers: {matched_triggers}"
+            )
 
-            if web_context:
-                tool_context = f"[Web Search Results - Use this data to answer]:\n{web_context}"
+            if matched_triggers:
+                tool_call = get_web_tool_call(message_text)
+                web_context = execute_web_tool_call(
+                    tool_call, original_query=message_text, user_id=user.id
+                )
+
+                # Optional fallback: if the router decided "none" but a user pasted a URL,
+                # use the heuristic Tavily context builder.
+                if (
+                    not web_context
+                    and "http://" in lower_msg
+                    or "https://" in lower_msg
+                    or "www." in lower_msg
+                ):
+                    web_context = get_web_context(message_text, user_id=user.id)
+
+                if web_context:
+                    tool_context = (
+                        "[Web Search Results - Use this data to answer]:\n"
+                        f"{web_context}"
+                    )
         
         return tool_context
     
